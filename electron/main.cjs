@@ -1408,6 +1408,8 @@ ipcMain.handle('run-deep-scan', async () => {
 
   for (const t of targets) {
     if (t.path === 'RECYCLE_BIN') {
+      let rbBytes = 0;
+      let rbCount = 0;
       try {
         const ps = '$sh = New-Object -ComObject Shell.Application; $rb = $sh.Namespace(0xa); $items = $rb.Items(); $total = 0; foreach ($i in $items) { $total += $i.Size }; [PSCustomObject]@{ Count = $items.Count; SizeBytes = $total } | ConvertTo-Json -Compress';
         const b64 = Buffer.from(ps, 'utf16le').toString('base64');
@@ -1415,36 +1417,36 @@ ipcMain.handle('run-deep-scan', async () => {
         if (rbRes.stdout.trim()) {
           const data = JSON.parse(rbRes.stdout.trim());
           if (data && data.SizeBytes > 0) {
-            totalBytes += data.SizeBytes;
-            itemsCount += data.Count || 1;
-            phasesResult.push({
-              phase: t.phase,
-              title: t.title,
-              category: t.category,
-              sizeBytes: data.SizeBytes,
-              fileCount: data.Count || 1,
-              path: t.path
-            });
+            rbBytes = data.SizeBytes;
+            rbCount = data.Count || 1;
           }
         }
       } catch (_) {}
+      totalBytes += rbBytes;
+      itemsCount += rbCount;
+      phasesResult.push({
+        phase: t.phase,
+        title: t.title,
+        category: t.category,
+        sizeBytes: rbBytes,
+        fileCount: rbCount,
+        path: t.path
+      });
       await new Promise((r) => setImmediate(r));
       continue;
     }
 
     const st = getDirectoryStats(t.path, 3);
-    if (st.totalBytes > 0) {
-      totalBytes += st.totalBytes;
-      itemsCount += st.fileCount;
-      phasesResult.push({
-        phase: t.phase,
-        title: t.title,
-        category: t.category,
-        sizeBytes: st.totalBytes,
-        fileCount: st.fileCount,
-        path: t.path
-      });
-    }
+    totalBytes += st.totalBytes;
+    itemsCount += st.fileCount;
+    phasesResult.push({
+      phase: t.phase,
+      title: t.title,
+      category: t.category,
+      sizeBytes: st.totalBytes,
+      fileCount: st.fileCount,
+      path: t.path
+    });
     await new Promise((r) => setImmediate(r));
   }
 

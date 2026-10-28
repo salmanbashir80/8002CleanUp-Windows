@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Trash2, RotateCcw, CheckCircle2, ShieldAlert, FolderCheck, HardDrive, Layers } from 'lucide-react';
+import { Sparkles, Trash2, RotateCcw, CheckCircle2, ShieldCheck, FolderCheck, HardDrive, Layers, ArrowRight } from 'lucide-react';
 
 interface DeepPhase {
   phase: number;
@@ -26,10 +26,11 @@ export default function DeepScan({ setStatusBanner, formatBytes }: Props) {
   const [data, setData] = useState<DeepScanResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [purging, setPurging] = useState(false);
+  const [cleaningPhase, setCleaningPhase] = useState<number | null>(null);
 
   const handleStartDeepScan = async () => {
     setLoading(true);
-    setStatusBanner('Executing 13-Phase Deep System Scan across Windows Temp, Prefetch, WER Logs, Caches & Recycle Bin…');
+    setStatusBanner('Executing 13-Phase Deep Forensic System Scan across Windows Temp, Prefetch, WER Logs, Caches & Recycle Bin…');
     try {
       if (window.electronAPI?.runDeepScan) {
         const res = await window.electronAPI.runDeepScan();
@@ -48,8 +49,10 @@ export default function DeepScan({ setStatusBanner, formatBytes }: Props) {
   }, []);
 
   const handleDeepPurgeAll = async () => {
-    if (!data || purging || data.phasesResult.length === 0) return;
-    const pathsToClean = data.phasesResult.map((p) => p.path);
+    if (!data || purging) return;
+    const cleanable = data.phasesResult.filter(p => p.sizeBytes > 0);
+    if (cleanable.length === 0) return;
+    const pathsToClean = cleanable.map(p => p.path);
     setPurging(true);
     setStatusBanner(`Deep purging ${pathsToClean.length} forensic junk locations…`);
     try {
@@ -65,35 +68,56 @@ export default function DeepScan({ setStatusBanner, formatBytes }: Props) {
     }
   };
 
+  const handleCleanSinglePhase = async (phase: DeepPhase) => {
+    if (phase.sizeBytes === 0 || cleaningPhase !== null) return;
+    setCleaningPhase(phase.phase);
+    try {
+      if (phase.path === 'RECYCLE_BIN') {
+        if (window.electronAPI?.emptyRecycleBin) {
+          await window.electronAPI.emptyRecycleBin();
+          setStatusBanner('Windows Recycle Bin emptied.');
+        }
+      } else if (window.electronAPI?.cleanItems) {
+        await window.electronAPI.cleanItems([phase.path], false);
+        setStatusBanner(`Purged ${phase.title} successfully.`);
+      }
+      await handleStartDeepScan();
+    } catch (err: any) {
+      setStatusBanner(`Clean notice: ${err.message}`);
+    } finally {
+      setCleaningPhase(null);
+    }
+  };
+
   const getCategoryColor = (cat: string) => {
-    if (cat.includes('System')) return '#ff2a85';
-    if (cat.includes('Browser')) return '#00e5ff';
-    if (cat.includes('Developer')) return '#ffbe0b';
-    return '#18e299';
+    if (cat.includes('System')) return '#ff4757';
+    if (cat.includes('Browser')) return '#00f2fe';
+    if (cat.includes('Developer')) return '#ffab00';
+    return '#00e676';
   };
 
   return (
     <div className="workspace-container">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 600 }}>13-Phase Deep Forensic System Scan</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 600, color: '#fff' }}>13-Phase Deep Forensic System Scan</h1>
             <span
               style={{
-                fontSize: 11,
+                fontSize: 10.5,
                 padding: '3px 8px',
                 borderRadius: 6,
-                background: 'rgba(255,42,133,0.18)',
-                color: '#ff2a85',
-                border: '1px solid rgba(255,42,133,0.3)',
-                fontWeight: 700
+                background: 'rgba(0, 242, 254, 0.15)',
+                color: '#00f2fe',
+                border: '1px solid rgba(0, 242, 254, 0.35)',
+                fontWeight: 600
               }}
             >
               100% Real File-System
             </span>
           </div>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
+          <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginTop: 3 }}>
             Exhaustive disk inspection across 13 Windows system layers: User &amp; System Temp, Prefetch, DirectX Shaders, WER Crash Dumps, Browser Caches &amp; Dev Residues.
           </p>
         </div>
@@ -108,8 +132,8 @@ export default function DeepScan({ setStatusBanner, formatBytes }: Props) {
             onClick={handleDeepPurgeAll}
             disabled={!data || data.totalBytes === 0 || loading || purging}
             style={{
-              background: data && data.totalBytes > 0 ? 'linear-gradient(135deg, #ff2a85, #8b3dff)' : undefined,
-              boxShadow: data && data.totalBytes > 0 ? '0 0 16px rgba(255,42,133,0.45)' : undefined
+              background: data && data.totalBytes > 0 ? 'linear-gradient(135deg, #ff4757, #ff6b81)' : undefined,
+              boxShadow: data && data.totalBytes > 0 ? '0 0 16px rgba(255, 71, 87, 0.45)' : undefined
             }}
           >
             <Trash2 size={14} />
@@ -118,116 +142,181 @@ export default function DeepScan({ setStatusBanner, formatBytes }: Props) {
         </div>
       </div>
 
-      {/* Metrics Row */}
+      {/* Top 3 Metric Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
         <div className="glass-card" style={{ padding: '14px 18px' }}>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Total Cleanable Space Discovered</div>
-          <div style={{ fontSize: 24, fontWeight: 600, color: '#ff2a85', marginTop: 4 }}>
+          <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', fontWeight: 500 }}>Total Cleanable Space Discovered</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: data && data.totalBytes > 0 ? '#ff4757' : '#00e676', marginTop: 4 }}>
             {data ? formatBytes(data.totalBytes) : '0 MB'}
           </div>
-        </div>
-
-        <div className="glass-card" style={{ padding: '14px 18px' }}>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>System Junk Files Count</div>
-          <div style={{ fontSize: 24, fontWeight: 600, color: '#00e5ff', marginTop: 4 }}>
-            {data ? `${data.itemsCount.toLocaleString()} Files` : '0 Files'}
+          <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+            {data && data.totalBytes > 0 ? 'Safe to purge without affecting apps' : 'All layers optimized'}
           </div>
         </div>
 
         <div className="glass-card" style={{ padding: '14px 18px' }}>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Scan Coverage Phases</div>
-          <div style={{ fontSize: 24, fontWeight: 600, color: '#18e299', marginTop: 4 }}>
+          <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', fontWeight: 500 }}>System Junk Files Count</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#00f2fe', marginTop: 4 }}>
+            {data ? `${data.itemsCount.toLocaleString()} Files` : '0 Files'}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+            Across 13 Windows system layers
+          </div>
+        </div>
+
+        <div className="glass-card" style={{ padding: '14px 18px' }}>
+          <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', fontWeight: 500 }}>Scan Coverage Phases</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#00e676', marginTop: 4 }}>
             13 of 13 Layers Analyzed
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+            Forensic WMI &amp; NTFS layer audit
           </div>
         </div>
       </div>
 
-      {/* Phase Cards List */}
-      <div className="glass-card" style={{ flex: 1, padding: 14 }}>
+      {/* Phase Cards Grid (Fills Space with 13 Individual Cards!) */}
+      <div style={{ marginTop: 2 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Layers size={15} color="#00f2fe" /> 13 Forensic System Layer Cards
+          </span>
+          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+            Each layer independently monitored &amp; purgeable
+          </span>
+        </div>
+
         {loading ? (
-          <div style={{ padding: 60, textAlign: 'center' }}>
-            <Sparkles size={36} color="#ff2a85" style={{ margin: '0 auto 12px', animation: 'spin 2s linear infinite' }} />
-            <div style={{ fontSize: 15, fontWeight: 700 }}>Performing Forensic Deep Scan…</div>
+          <div className="glass-card" style={{ padding: 60, textAlign: 'center' }}>
+            <Sparkles size={36} color="#00f2fe" style={{ margin: '0 auto 12px', animation: 'spin 2s linear infinite' }} />
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>Performing Forensic Deep Scan…</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
               Scanning Temp, Prefetch, DirectX Shaders, Browser Profiles &amp; Recycle Bin
             </div>
           </div>
-        ) : !data || data.phasesResult.length === 0 ? (
-          <div style={{ padding: 60, textAlign: 'center' }}>
-            <CheckCircle2 size={42} color="#18e299" style={{ margin: '0 auto 12px' }} />
-            <div style={{ fontSize: 16, fontWeight: 600 }}>System is Fully Optimized!</div>
-            <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginTop: 4 }}>
-              Zero redundant files or stale caches found across all 13 inspection phases.
-            </div>
-          </div>
         ) : (
-          <div className="scroll-table-container">
-            {data.phasesResult.map((phase) => (
-              <div
-                key={phase.phase}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '12px 16px',
-                  borderRadius: 10,
-                  background: 'rgba(0,0,0,0.22)',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                  gap: 12
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 9,
-                      background: 'rgba(255,255,255,0.06)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 600,
-                      color: '#00e5ff',
-                      fontSize: 13
-                    }}
-                  >
-                    #{phase.phase}
-                  </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))',
+              gap: 12
+            }}
+          >
+            {(data?.phasesResult || []).map((phase) => {
+              const hasJunk = phase.sizeBytes > 0;
+              const isBusy = cleaningPhase === phase.phase;
+              const catColor = getCategoryColor(phase.category);
 
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>{phase.title}</span>
+              return (
+                <div
+                  key={phase.phase}
+                  className="glass-card interactive"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    padding: '14px',
+                    borderColor: hasJunk ? 'rgba(255, 71, 87, 0.35)' : 'rgba(255, 255, 255, 0.08)',
+                    background: hasJunk ? 'linear-gradient(145deg, rgba(30, 20, 28, 0.9), rgba(16, 18, 26, 0.92))' : undefined
+                  }}
+                >
+                  {/* Card Header */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div
+                          style={{
+                            width: 26,
+                            height: 26,
+                            borderRadius: 6,
+                            background: hasJunk ? 'rgba(255, 71, 87, 0.2)' : 'rgba(0, 230, 118, 0.15)',
+                            color: hasJunk ? '#ff4757' : '#00e676',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 11,
+                            fontWeight: 700
+                          }}
+                        >
+                          #{phase.phase.toString().padStart(2, '0')}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{phase.title}</div>
+                          <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 1 }}>
+                            {phase.category}
+                          </div>
+                        </div>
+                      </div>
+
                       <span
                         style={{
-                          fontSize: 10.5,
-                          fontWeight: 700,
-                          padding: '2px 7px',
-                          borderRadius: 5,
-                          background: `${getCategoryColor(phase.category)}22`,
-                          color: getCategoryColor(phase.category),
-                          border: `1px solid ${getCategoryColor(phase.category)}66`
+                          fontSize: 9.5,
+                          fontWeight: 600,
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                          background: hasJunk ? 'rgba(255, 71, 87, 0.16)' : 'rgba(0, 230, 118, 0.14)',
+                          color: hasJunk ? '#ff4757' : '#00e676',
+                          border: `1px solid ${hasJunk ? 'rgba(255, 71, 87, 0.4)' : 'rgba(0, 230, 118, 0.3)'}`
                         }}
                       >
-                        {phase.category}
+                        {hasJunk ? 'Cleanable' : 'Optimal'}
                       </span>
                     </div>
 
-                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace', marginTop: 3 }}>
+                    {/* Path */}
+                    <div
+                      style={{
+                        fontSize: 10.5,
+                        color: 'var(--text-secondary)',
+                        fontFamily: 'monospace',
+                        marginTop: 10,
+                        wordBreak: 'break-all',
+                        lineHeight: 1.3
+                      }}
+                    >
                       {phase.path}
                     </div>
                   </div>
-                </div>
 
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 16, fontWeight: 600, color: '#ff2a85' }}>
-                    {formatBytes(phase.sizeBytes)}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                    {phase.fileCount.toLocaleString()} files cleanable
+                  {/* Card Bottom / Action */}
+                  <div
+                    style={{
+                      marginTop: 12,
+                      paddingTop: 10,
+                      borderTop: '1px solid rgba(255,255,255,0.08)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: hasJunk ? '#ff4757' : '#00e676' }}>
+                        {formatBytes(phase.sizeBytes)}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>
+                        {hasJunk ? `${phase.fileCount.toLocaleString()} files cleanable` : 'Clean & Protected'}
+                      </div>
+                    </div>
+
+                    {hasJunk ? (
+                      <button
+                        className="btn-danger"
+                        onClick={() => handleCleanSinglePhase(phase)}
+                        disabled={isBusy || purging}
+                        style={{ padding: '5px 11px', fontSize: 11 }}
+                      >
+                        <Trash2 size={12} />
+                        {isBusy ? 'Purging…' : 'Clean Layer'}
+                      </button>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#00e676', fontSize: 11, fontWeight: 500 }}>
+                        <CheckCircle2 size={14} /> Optimal
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
