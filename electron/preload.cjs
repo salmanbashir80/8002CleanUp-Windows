@@ -27,6 +27,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setUserState: (username, enable) => ipcRenderer.invoke('set-user-state', { username, enable }),
   resetUserPassword: (username, newPassword) => ipcRenderer.invoke('reset-user-password', { username, newPassword }),
   launchUserTool: (tool) => ipcRenderer.invoke('launch-user-tool', { tool }),
+  scanDeletedFiles: () => ipcRenderer.invoke('scan-deleted-files'),
+  restoreDeletedFile: (rawPath, originalPath, customDestFolder) =>
+    ipcRenderer.invoke('restore-deleted-file', { rawPath, originalPath, customDestFolder }),
+  restoreBatchFiles: (items, customDestFolder) =>
+    ipcRenderer.invoke('restore-batch-files', { items, customDestFolder }),
+  testDataRecoveryEngine: () => ipcRenderer.invoke('test-data-recovery-engine'),
   scanWebsiteTrust: (payload) => ipcRenderer.invoke('scan-website-trust', payload),
   testAiKey: (payload) => ipcRenderer.invoke('test-ai-key', payload),
   cleanTrackingUrl: (url) => ipcRenderer.invoke('clean-tracking-url', { url }),

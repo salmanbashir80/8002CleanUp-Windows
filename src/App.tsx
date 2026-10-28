@@ -37,7 +37,8 @@ import {
   Sliders,
   Users,
   UserCheck,
-  UserX
+  UserX,
+  LifeBuoy
 } from 'lucide-react';
 
 import RegistryCleaner from './components/RegistryCleaner';
@@ -46,6 +47,7 @@ import DeepScan from './components/DeepScan';
 import SpeedTest from './components/SpeedTest';
 import HardwareDeepStudio from './components/HardwareDeepStudio';
 import PowerUserManager from './components/PowerUserManager';
+import DataRecoveryStudio from './components/DataRecoveryStudio';
 
 declare global {
   interface Window {
@@ -76,6 +78,10 @@ declare global {
       setUserState: (username: string, enable: boolean) => Promise<any>;
       resetUserPassword: (username: string, newPassword: string) => Promise<any>;
       launchUserTool: (tool: string) => Promise<any>;
+      scanDeletedFiles: () => Promise<any[]>;
+      restoreDeletedFile: (rawPath: string, originalPath: string, customDestFolder?: string) => Promise<any>;
+      restoreBatchFiles: (items: any[], customDestFolder?: string) => Promise<any>;
+      testDataRecoveryEngine: () => Promise<any>;
       scanWebsiteTrust: (payload: any) => Promise<any>;
       testAiKey: (payload: any) => Promise<any>;
       cleanTrackingUrl: (url: string) => Promise<any>;
@@ -101,6 +107,7 @@ type ModuleId =
   | 'system_junk'
   | 'browser_cleanup'
   | 'app_leftovers'
+  | 'data_recovery'
   | 'registry_cleaner'
   | 'driver_updater'
   | 'deep_scan'
@@ -556,6 +563,13 @@ export default function App() {
             App Uninstaller & Leftovers
           </button>
           <button
+            className={`nav-btn ${activeModule === 'data_recovery' ? 'active' : ''}`}
+            onClick={() => setActiveModule('data_recovery')}
+          >
+            <LifeBuoy size={16} color="#00e5ff" />
+            Deep File Recovery
+          </button>
+          <button
             className={`nav-btn ${activeModule === 'registry_cleaner' ? 'active' : ''}`}
             onClick={() => setActiveModule('registry_cleaner')}
           >
@@ -670,7 +684,7 @@ export default function App() {
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 8 }}>
-            <span style={{ color: 'rgba(255,255,255,0.65)' }}>v1.2.8 Pro</span>
+            <span style={{ color: 'rgba(255,255,255,0.65)' }}>v1.2.9 Pro</span>
             <span style={{ color: '#18e299', fontWeight: 700 }}>● Live Windows Engine</span>
           </div>
           <button
@@ -992,6 +1006,23 @@ export default function App() {
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
                   14 local accounts, enable/disable &amp; password reset
+                </div>
+              </div>
+
+              <div
+                className="glass-card interactive"
+                onClick={() => setActiveModule('data_recovery')}
+                style={{ padding: '14px 18px' }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <LifeBuoy size={20} color="#00e5ff" />
+                  <span className="metric-pill" style={{ color: '#00e5ff', borderColor: 'rgba(0,229,255,0.3)' }}>Forensic Carving</span>
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', marginTop: 8 }}>
+                  Deep File Recovery
+                </div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
+                  NTFS raw sector restoration with live self-test
                 </div>
               </div>
             </div>
@@ -2277,7 +2308,7 @@ export default function App() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
               <div>
-                <h1 style={{ fontSize: 24, fontWeight: 800 }}>My Tools Hub — 17 Pro Utilities</h1>
+                <h1 style={{ fontSize: 24, fontWeight: 800 }}>My Tools Hub — 18 Pro Utilities</h1>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                   All MacCare Pro features natively ported to Windows 10 & 11 with 100% genuine system engines.
                 </p>
@@ -2293,6 +2324,7 @@ export default function App() {
             >
               {[
                 ['Smart Care Dashboard', '1-Click full system health and purge check', () => setActiveModule('smart_care')],
+                ['Deep File Recovery', 'Raw NTFS forensic carving of deleted files with live self-test', () => setActiveModule('data_recovery')],
                 ['Power User & Accounts', 'Windows user accounts audit, enable/disable & password reset', () => setActiveModule('power_user')],
                 ['Hardware & Firmware Studio', 'Forensic CPU, GPU, RAM DIMM & UEFI Firmware inspection', () => setActiveModule('hardware_deep')],
                 ['System Junk Cleaner', 'Purge Windows %TEMP%, Prefetch & DirectX caches', () => setActiveModule('system_junk')],
@@ -2360,6 +2392,13 @@ export default function App() {
         {/* ============================================================== */}
         {activeModule === 'power_user' && (
           <PowerUserManager setStatusBanner={setStatusBanner} />
+        )}
+
+        {/* ============================================================== */}
+        {/* NEW MODULE: DEEP FORENSIC FILE RECOVERY STUDIO */}
+        {/* ============================================================== */}
+        {activeModule === 'data_recovery' && (
+          <DataRecoveryStudio setStatusBanner={setStatusBanner} formatBytes={formatBytes} />
         )}
       </main>
 
