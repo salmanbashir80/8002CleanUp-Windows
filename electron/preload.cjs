@@ -20,6 +20,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   scanDrivers: () => ipcRenderer.invoke('scan-drivers'),
   checkDriverUpdates: () => ipcRenderer.invoke('check-driver-updates'),
   testInternetSpeed: () => ipcRenderer.invoke('test-internet-speed'),
+  getLiveNetworkSpeed: () => ipcRenderer.invoke('get-live-network-speed'),
+  onLiveNetworkSpeed: (callback) => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on('live-network-speed', listener);
+    return () => ipcRenderer.removeListener('live-network-speed', listener);
+  },
   runDeepScan: () => ipcRenderer.invoke('run-deep-scan'),
   getDeepHardwareInfo: () => ipcRenderer.invoke('get-deep-hardware-info'),
   openFirmwareManager: (action, payload) => ipcRenderer.invoke('open-firmware-manager', { action, payload }),
