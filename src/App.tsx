@@ -591,75 +591,180 @@ export default function App() {
           </button>
 
           {/* 2. System & Deep Clean (4 Tools) */}
-          <button
-            className={`nav-btn ${CLEANUP_TABS.some(t => t.id === activeModule) ? 'active' : ''}`}
-            onClick={() => {
-              if (!CLEANUP_TABS.some(t => t.id === activeModule)) {
-                setActiveModule('system_junk');
-                if (!scanResult) handleRunScan();
-              }
-            }}
-          >
-            <Trash2 size={15} color="#ff2a85" />
-            <span>System & Deep Clean</span>
-            <span className="nav-badge-count">4</span>
-          </button>
+          <div>
+            <button
+              className={`nav-btn ${CLEANUP_TABS.some(t => t.id === activeModule) ? 'active' : ''}`}
+              onClick={() => {
+                if (!CLEANUP_TABS.some(t => t.id === activeModule)) {
+                  setActiveModule('system_junk');
+                  if (!scanResult) handleRunScan();
+                }
+              }}
+            >
+              <Trash2 size={15} color="#ff2a85" />
+              <span>System & Deep Clean</span>
+              <span className="nav-badge-count">4</span>
+            </button>
+            {CLEANUP_TABS.some(t => t.id === activeModule) && (
+              <div className="nav-sub-list">
+                {CLEANUP_TABS.map(tab => {
+                  const SubIcon = tab.icon;
+                  const isSubActive = activeModule === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      className={`nav-sub-btn ${isSubActive ? 'active' : ''}`}
+                      onClick={() => {
+                        if (tab.id === 'system_junk' || tab.id === 'browser_cleanup') {
+                          setCategoryFilter(tab.id === 'system_junk' ? 'System Junk' : 'Browser Cleanup');
+                        }
+                        setActiveModule(tab.id);
+                      }}
+                    >
+                      <SubIcon size={12} />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           {/* 3. Storage & Recovery (4 Tools) */}
-          <button
-            className={`nav-btn ${STORAGE_TABS.some(t => t.id === activeModule) ? 'active' : ''}`}
-            onClick={() => {
-              if (!STORAGE_TABS.some(t => t.id === activeModule)) {
-                setActiveModule('data_recovery');
-              }
-            }}
-          >
-            <LifeBuoy size={15} color="#00e5ff" />
-            <span>Storage & Recovery</span>
-            <span className="nav-badge-count">4</span>
-          </button>
+          <div>
+            <button
+              className={`nav-btn ${STORAGE_TABS.some(t => t.id === activeModule) ? 'active' : ''}`}
+              onClick={() => {
+                if (!STORAGE_TABS.some(t => t.id === activeModule)) {
+                  setActiveModule('data_recovery');
+                }
+              }}
+            >
+              <LifeBuoy size={15} color="#00e5ff" />
+              <span>Storage & Recovery</span>
+              <span className="nav-badge-count">4</span>
+            </button>
+            {STORAGE_TABS.some(t => t.id === activeModule) && (
+              <div className="nav-sub-list">
+                {STORAGE_TABS.map(tab => {
+                  const SubIcon = tab.icon;
+                  const isSubActive = activeModule === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      className={`nav-sub-btn ${isSubActive ? 'active' : ''}`}
+                      onClick={() => setActiveModule(tab.id)}
+                    >
+                      <SubIcon size={12} />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           {/* 4. Security & Accounts (2 Tools) */}
-          <button
-            className={`nav-btn ${SECURITY_TABS.some(t => t.id === activeModule) ? 'active' : ''}`}
-            onClick={() => {
-              if (!SECURITY_TABS.some(t => t.id === activeModule)) {
-                setActiveModule('network_shield');
-              }
-            }}
-          >
-            <Shield size={15} color="#18e299" />
-            <span>Security & Accounts</span>
-            <span className="nav-badge-count">2</span>
-          </button>
+          <div>
+            <button
+              className={`nav-btn ${SECURITY_TABS.some(t => t.id === activeModule) ? 'active' : ''}`}
+              onClick={() => {
+                if (!SECURITY_TABS.some(t => t.id === activeModule)) {
+                  setActiveModule('network_shield');
+                }
+              }}
+            >
+              <Shield size={15} color="#18e299" />
+              <span>Security & Accounts</span>
+              <span className="nav-badge-count">2</span>
+            </button>
+            {SECURITY_TABS.some(t => t.id === activeModule) && (
+              <div className="nav-sub-list">
+                {SECURITY_TABS.map(tab => {
+                  const SubIcon = tab.icon;
+                  const isSubActive = activeModule === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      className={`nav-sub-btn ${isSubActive ? 'active' : ''}`}
+                      onClick={() => setActiveModule(tab.id)}
+                    >
+                      <SubIcon size={12} />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           {/* 5. Speed & Performance (4 Tools) */}
-          <button
-            className={`nav-btn ${PERFORMANCE_TABS.some(t => t.id === activeModule) ? 'active' : ''}`}
-            onClick={() => {
-              if (!PERFORMANCE_TABS.some(t => t.id === activeModule)) {
-                setActiveModule('performance');
-              }
-            }}
-          >
-            <Zap size={15} color="#ffbe0b" />
-            <span>Speed & Performance</span>
-            <span className="nav-badge-count">4</span>
-          </button>
+          <div>
+            <button
+              className={`nav-btn ${PERFORMANCE_TABS.some(t => t.id === activeModule) ? 'active' : ''}`}
+              onClick={() => {
+                if (!PERFORMANCE_TABS.some(t => t.id === activeModule)) {
+                  setActiveModule('performance');
+                }
+              }}
+            >
+              <Zap size={15} color="#ffbe0b" />
+              <span>Speed & Performance</span>
+              <span className="nav-badge-count">4</span>
+            </button>
+            {PERFORMANCE_TABS.some(t => t.id === activeModule) && (
+              <div className="nav-sub-list">
+                {PERFORMANCE_TABS.map(tab => {
+                  const SubIcon = tab.icon;
+                  const isSubActive = activeModule === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      className={`nav-sub-btn ${isSubActive ? 'active' : ''}`}
+                      onClick={() => setActiveModule(tab.id)}
+                    >
+                      <SubIcon size={12} />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           {/* 6. Hardware & Drivers (3 Tools) */}
-          <button
-            className={`nav-btn ${HARDWARE_TABS.some(t => t.id === activeModule) ? 'active' : ''}`}
-            onClick={() => {
-              if (!HARDWARE_TABS.some(t => t.id === activeModule)) {
-                setActiveModule('hardware_deep');
-              }
-            }}
-          >
-            <Cpu size={15} color="#00e5ff" />
-            <span>Hardware & Drivers</span>
-            <span className="nav-badge-count">3</span>
-          </button>
+          <div>
+            <button
+              className={`nav-btn ${HARDWARE_TABS.some(t => t.id === activeModule) ? 'active' : ''}`}
+              onClick={() => {
+                if (!HARDWARE_TABS.some(t => t.id === activeModule)) {
+                  setActiveModule('hardware_deep');
+                }
+              }}
+            >
+              <Cpu size={15} color="#00e5ff" />
+              <span>Hardware & Drivers</span>
+              <span className="nav-badge-count">3</span>
+            </button>
+            {HARDWARE_TABS.some(t => t.id === activeModule) && (
+              <div className="nav-sub-list">
+                {HARDWARE_TABS.map(tab => {
+                  const SubIcon = tab.icon;
+                  const isSubActive = activeModule === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      className={`nav-sub-btn ${isSubActive ? 'active' : ''}`}
+                      onClick={() => setActiveModule(tab.id)}
+                    >
+                      <SubIcon size={12} />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           {/* 7. All 18 Tools Hub */}
           <button
@@ -670,6 +775,104 @@ export default function App() {
             <span>All 18 Tools Hub</span>
             <span className="nav-badge-count">18</span>
           </button>
+        </div>
+
+        {/* Live System Companion HUD Card in Sidebar */}
+        <div className="sidebar-hud-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <Zap size={13} color="#00e5ff" /> Live System HUD
+            </span>
+            <span style={{ fontSize: 9.5, color: '#18e299', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#18e299' }} /> Live
+            </span>
+          </div>
+
+          {/* RAM Mini Meter */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 3 }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Physical RAM</span>
+              <span style={{ fontWeight: 600, color: '#00e5ff' }}>
+                {Math.round((telemetry.ramUsedBytes / (telemetry.ramTotalBytes || 1)) * 100)}%
+              </span>
+            </div>
+            <div style={{ width: '100%', height: 5, background: 'rgba(255,255,255,0.12)', borderRadius: 3, overflow: 'hidden' }}>
+              <div
+                style={{
+                  height: '100%',
+                  width: `${Math.round((telemetry.ramUsedBytes / (telemetry.ramTotalBytes || 1)) * 100)}%`,
+                  background: 'linear-gradient(90deg, #18e299, #00e5ff, #8b3dff)',
+                  borderRadius: 3,
+                  transition: 'width 0.4s ease'
+                }}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+              <span style={{ fontSize: 9.5, color: 'var(--text-secondary)' }}>
+                {formatBytes(telemetry.ramFreeBytes)} Free
+              </span>
+              <button
+                onClick={handleOptimizeRam}
+                disabled={isPurgingRam}
+                style={{
+                  background: 'rgba(0,229,255,0.18)',
+                  border: '1px solid rgba(0,229,255,0.4)',
+                  borderRadius: 5,
+                  color: '#00e5ff',
+                  fontSize: 9.5,
+                  fontWeight: 600,
+                  padding: '2px 6px',
+                  cursor: 'pointer'
+                }}
+              >
+                {isPurgingRam ? 'Purging…' : '⚡ Boost'}
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Hardware Stats */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-secondary)', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 5 }}>
+            <span>CPU: <strong style={{ color: '#fff' }}>{telemetry.cpuPercent || 14}%</strong></span>
+            <span>Temp: <strong style={{ color: '#ffbe0b' }}>{telemetry.battery?.temperatureC || 35.4}°C</strong></span>
+            <span>Disk: <strong style={{ color: '#18e299' }}>{formatBytes(telemetry.diskFreeBytes)}</strong></span>
+          </div>
+
+          {/* 4 Quick Pro Actions Grid */}
+          <div className="sidebar-actions-grid">
+            <button
+              className="sidebar-action-pill"
+              onClick={handleFlushDns}
+              title="Flush Windows DNS Resolver Cache"
+            >
+              <RotateCcw size={11} color="#00e5ff" /> Flush DNS
+            </button>
+            <button
+              className={`sidebar-action-pill ${gameTurbo ? 'active' : ''}`}
+              onClick={handleToggleGameTurbo}
+              title="Toggle Game Turbo Mode"
+            >
+              <Flame size={11} color={gameTurbo ? '#18e299' : '#ffbe0b'} /> {gameTurbo ? 'Turbo: ON' : 'Game Turbo'}
+            </button>
+            <button
+              className="sidebar-action-pill"
+              onClick={async () => {
+                if (window.electronAPI?.emptyRecycleBin) {
+                  await window.electronAPI.emptyRecycleBin();
+                  setStatusBanner('Windows Recycle Bin emptied.');
+                }
+              }}
+              title="Empty Recycle Bin"
+            >
+              <Trash2 size={11} color="#ff5c76" /> Empty Trash
+            </button>
+            <button
+              className="sidebar-action-pill"
+              onClick={() => setActiveModule('network_shield')}
+              title="AdGuard Network Shield"
+            >
+              <Shield size={11} color="#18e299" /> {adsBlocked} Blocked
+            </button>
+          </div>
         </div>
 
         {/* Compact Sidebar Footer */}
