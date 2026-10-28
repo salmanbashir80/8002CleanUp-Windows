@@ -290,13 +290,15 @@ export default function App() {
     dnsServers: string[];
     activeProvider: string;
     isAdGuard: boolean;
+    isDhcp?: boolean;
   }>({
     adapter: 'Ethernet',
     dnsServers: [],
     activeProvider: 'Detecting...',
-    isAdGuard: false
+    isAdGuard: false,
+    isDhcp: true
   });
-  const [selectedDnsProvider, setSelectedDnsProvider] = useState('AdGuard DNS');
+  const [selectedDnsProvider, setSelectedDnsProvider] = useState('ISP Default DHCP (Turn OFF Custom DNS)');
   const [dnsLatencyMs, setDnsLatencyMs] = useState<number>(14);
   const [isApplyingDns, setIsApplyingDns] = useState(false);
   const [isTestingSinkhole, setIsTestingSinkhole] = useState(false);
@@ -583,6 +585,10 @@ export default function App() {
   };
 
   const handleApplyDns = async (name: string) => {
+    if (name.includes('DHCP') || name.includes('Turn OFF')) {
+      await handleRestoreDns();
+      return;
+    }
     setIsApplyingDns(true);
     setSelectedDnsProvider(name);
     setStatusBanner(`Applying ${name} to Windows network adapter (Please allow Windows Administrator UAC prompt)...`);
@@ -988,7 +994,7 @@ export default function App() {
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 6 }}>
-            <span style={{ color: 'var(--text-secondary)' }}>v2.2.1 Pro</span>
+            <span style={{ color: 'var(--text-secondary)' }}>v2.3.0 Pro</span>
             <span style={{ color: '#18e299', fontWeight: 600 }}>● Live Engine</span>
           </div>
           <button
@@ -2502,32 +2508,46 @@ export default function App() {
                   className="glass-card"
                   style={{
                     padding: '16px 20px',
-                    borderLeft: activeSystemDns.isAdGuard ? '4px solid #00e676' : '4px solid #ffab00',
+                    borderLeft: activeSystemDns.isAdGuard ? '4px solid #ffab00' : '4px solid #00e676',
                     background: 'linear-gradient(145deg, rgba(16, 20, 32, 0.9), rgba(10, 12, 20, 0.95))'
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Shield size={18} color={activeSystemDns.isAdGuard ? '#00e676' : '#ffab00'} />
+                        <Shield size={18} color={activeSystemDns.isAdGuard ? '#ffab00' : '#00e676'} />
                         <span style={{ fontSize: 15, fontWeight: 700 }}>Real-Time Windows DNS Live Audit</span>
                         <span
                           className="metric-pill"
                           style={{
-                            color: activeSystemDns.isAdGuard ? '#00e676' : '#ffab00',
-                            borderColor: activeSystemDns.isAdGuard ? 'rgba(0,230,118,0.35)' : 'rgba(255,171,0,0.35)'
+                            color: activeSystemDns.isAdGuard ? '#ffab00' : '#00e676',
+                            borderColor: activeSystemDns.isAdGuard ? 'rgba(255,171,0,0.35)' : 'rgba(0,230,118,0.35)'
                           }}
                         >
-                          {activeSystemDns.isAdGuard ? '● AdGuard Active & Filtering' : '○ ISP / DHCP Default'}
+                          {activeSystemDns.isAdGuard ? '○ Custom DNS Active' : '● ISP DHCP Active (Fastest Internet - Custom DNS OFF)'}
                         </span>
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
-                        Active Hardware Adapter: <strong style={{ color: '#fff' }}>{activeSystemDns.adapter}</strong> • Active DNS IPs: <strong style={{ color: '#00f2fe', fontFamily: 'monospace' }}>{activeSystemDns.dnsServers.length > 0 ? activeSystemDns.dnsServers.join(', ') : '192.168.18.1 (Default)'}</strong>
+                        Active Hardware Adapter: <strong style={{ color: '#fff' }}>{activeSystemDns.adapter}</strong> • Active DNS IPs: <strong style={{ color: '#00f2fe', fontFamily: 'monospace' }}>{activeSystemDns.dnsServers.length > 0 ? activeSystemDns.dnsServers.join(', ') : '192.168.18.1 (Automatic DHCP)'}</strong>
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button className="btn-secondary" onClick={refreshActiveDns} disabled={isApplyingDns} style={{ padding: '6px 12px', fontSize: 12 }}>
-                        <RotateCcw size={13} /> Re-check Windows Adapter
+                        <RotateCcw size={13} /> Re-check Adapter
+                      </button>
+                      <button
+                        className="btn-primary"
+                        onClick={handleRestoreDns}
+                        disabled={isApplyingDns || (!activeSystemDns.isAdGuard && (activeSystemDns as any).isDhcp)}
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: 12,
+                          background: 'rgba(255,171,0,0.2)',
+                          borderColor: '#ffab00',
+                          color: '#ffab00'
+                        }}
+                      >
+                        Turn OFF Custom DNS (Default ISP)
                       </button>
                     </div>
                   </div>
@@ -2539,19 +2559,22 @@ export default function App() {
                     <div>
                       <h3 style={{ fontSize: 16, fontWeight: 700 }}>Encrypted DNS Resolver Profiles</h3>
                       <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                        Select a provider and click Apply to configure Windows network adapter via Administrator elevation.
+                        Standard default is Automatic ISP DHCP for fastest local ping and browsing speed.
                       </p>
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {[
+                      ['ISP Default DHCP (Turn OFF Custom DNS)', 'Automatic (192.168.18.1)', 'Default local router DNS without third-party latency (Fastest & Standard)', 'DHCP'],
                       ['AdGuard DNS', '94.140.14.14, 94.140.15.15', 'Default ad-blocking & anti-tracker sinkhole resolver', '94.140.14.14'],
                       ['AdGuard DNS Family Protection', '94.140.14.15, 94.140.15.16', 'Safe search, parental control & adult domain blocker', '94.140.14.15'],
                       ['Cloudflare DNS', '1.1.1.1, 1.0.0.1', 'Ultra-fast global 1.1.1.1 DNS with warp speed routing', '1.1.1.1'],
                       ['Quad9 DNS', '9.9.9.9, 149.112.112.112', 'High-security malware domain sinkhole & threat filter', '9.9.9.9']
                     ].map(([name, ips, desc, primaryIp]: any) => {
-                      const isRealActiveInWindows = activeSystemDns.dnsServers.includes(primaryIp);
+                      const isRealActiveInWindows = primaryIp === 'DHCP'
+                        ? (!activeSystemDns.isAdGuard && ((activeSystemDns as any).isDhcp || !activeSystemDns.dnsServers.some(ip => ['94.140.14.14', '1.1.1.1', '9.9.9.9'].includes(ip))))
+                        : activeSystemDns.dnsServers.includes(primaryIp);
                       const isSelected = selectedDnsProvider === name;
 
                       return (
@@ -2590,7 +2613,7 @@ export default function App() {
                             <div style={{ textAlign: 'right' }}>
                               <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#00f2fe', fontWeight: 600 }}>{ips}</div>
                               <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginTop: 2 }}>
-                                {isSelected ? `Latency: ${dnsLatencyMs}ms` : 'Click to select'}
+                                {isSelected ? (primaryIp === 'DHCP' ? 'Direct local connection' : `Latency: ${dnsLatencyMs}ms`) : 'Click to select'}
                               </div>
                             </div>
 
@@ -2609,7 +2632,7 @@ export default function App() {
                                 color: isRealActiveInWindows ? '#00e676' : '#fff'
                               }}
                             >
-                              {isRealActiveInWindows ? 'Applied ✓' : isApplyingDns ? 'Applying…' : 'Apply (Admin)'}
+                              {isRealActiveInWindows ? 'Applied ✓' : isApplyingDns ? 'Applying…' : primaryIp === 'DHCP' ? 'Restore Default' : 'Apply (Admin)'}
                             </button>
                           </div>
                         </div>

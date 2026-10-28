@@ -1,7 +1,7 @@
 {
   "name": "8002cleanup-windows",
   "productName": "MacCare Pro for Windows (8002CleanUp)",
-  "version": "2.2.1",
+  "version": "2.3.0",
   "author": "Salman Bashir <salmanbashir80@github.com>",
   "description": "8002CleanUp / WinCare Pro for Windows 10 & 11 — Smart System Cleaner, AdGuard Network Shield, Nova AI Cyber Guardian Pet, ScamAdviser Scanner & Battery Lifeguard",
   "main": "electron/main.cjs",
