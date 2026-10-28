@@ -58,6 +58,7 @@ declare global {
       restoreDns: () => Promise<any>;
       openExternal: (url: string) => Promise<any>;
       onClipboardUrlCleaned: (cb: (data: any) => void) => () => void;
+      onCleanProgress?: (cb: (data: any) => void) => () => void;
     };
   }
 }
@@ -85,6 +86,12 @@ type ModuleId =
 
 export default function App() {
   const [activeModule, setActiveModule] = useState<ModuleId>('smart_care');
+  const [isCleaning, setIsCleaning] = useState<boolean>(false);
+  const [cleanProgress, setCleanProgress] = useState<{ target?: string; items?: number; freedBytes?: number }>({
+    items: 0,
+    freedBytes: 0,
+    target: ''
+  });
   const [dryRun, setDryRun] = useState<boolean>(false);
   const [statusBanner, setStatusBanner] = useState<string | null>(
     '8002CleanUp Pro (MacCare Windows Edition) — All 12 Pro Engines Online.'
@@ -233,6 +240,14 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isProtectionEnabled]);
 
+  // Listen for non-blocking clean progress
+  useEffect(() => {
+    if (!window.electronAPI?.onCleanProgress) return;
+    return window.electronAPI.onCleanProgress((data) => {
+      setCleanProgress(data);
+    });
+  }, []);
+
   // Listen for background clipboard URL cleaning
   useEffect(() => {
     if (!window.electronAPI?.onClipboardUrlCleaned) return;
@@ -261,18 +276,24 @@ export default function App() {
   };
 
   const handleCleanSelected = async (onlySafeToClean = false) => {
-    if (!scanResult?.items) return;
+    if (!scanResult?.items || isCleaning) return;
     const toClean = scanResult.items.filter((i: any) =>
       onlySafeToClean ? i.safety === 'Safe to Clean' : i.selected
     );
     const paths = toClean.map((i: any) => i.path);
     if (window.electronAPI?.cleanItems) {
-      const res = await window.electronAPI.cleanItems(paths, dryRun);
-      setStatusBanner(res.message);
-      if (!dryRun) {
-        setTimeout(() => {
-          handleRunScan();
-        }, 500);
+      setIsCleaning(true);
+      setCleanProgress({ items: 0, freedBytes: 0, target: 'Purging system junk...' });
+      try {
+        const res = await window.electronAPI.cleanItems(paths, dryRun);
+        setStatusBanner(res.message);
+        if (!dryRun) {
+          await handleRunScan();
+        }
+      } catch (err: any) {
+        setStatusBanner(`Clean completed with notice: ${err.message || 'Done'}`);
+      } finally {
+        setIsCleaning(false);
       }
     }
   };
@@ -613,155 +634,348 @@ export default function App() {
         )}
 
         {/* ============================================================== */}
-        {/* 1. MODULE: SMART CARE DASHBOARD */}
+        {/* 1. MODULE: SMART CARE DASHBOARD (MAXIMIZE & FULLSCREEN OPTIMIZED) */}
         {/* ============================================================== */}
         {activeModule === 'smart_care' && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+          <div className="workspace-container">
+            {/* Header with Title and Quick Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h1 style={{ fontSize: 26, fontWeight: 800 }}>Smart Care — Windows 10 & 11</h1>
+                <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.4px' }}>Smart Care — Windows 10 & 11</h1>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 3 }}>
-                  {telemetry.platform} • {telemetry.cpuModel} ({telemetry.cpuCores} Cores)
+                  {telemetry.platform} • {telemetry.cpuModel} ({telemetry.cpuCores} Cores) • Host: {telemetry.hostname}
                 </p>
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
-                <button className="btn-secondary" onClick={handleOptimizeRam}>
+                <button className="btn-secondary" onClick={handleOptimizeRam} disabled={isCleaning}>
                   <Zap size={14} color="#00e5ff" /> Free Up RAM
                 </button>
                 <button className="btn-primary" onClick={() => setActiveModule('network_shield')}>
-                  <Bot size={15} /> Open Nova AI & AdGuard
+                  <Bot size={15} /> Nova AI & AdGuard Shield
                 </button>
               </div>
             </div>
 
-            {/* 5-Card Grid matching MacCare Pro */}
+            {/* Top 5 Metric Cards Grid */}
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(215px, 1fr))',
-                gap: 14,
-                marginBottom: 24
+                gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
+                gap: 14
               }}
             >
               <div className="glass-card interactive" onClick={() => setActiveModule('system_junk')}>
-                <Trash2 size={24} color="#ff2a85" />
-                <div style={{ fontSize: 15, fontWeight: 700, marginTop: 10 }}>System Junk</div>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
-                  Windows %TEMP%, Prefetch, DirectX & Update caches
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Trash2 size={24} color="#ff2a85" />
+                  <span className="metric-pill">System Junk</span>
                 </div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#ff2a85', marginTop: 10 }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#ff2a85', marginTop: 12 }}>
                   {scanResult ? formatBytes(scanResult.totalBytes) : 'Ready to Scan'}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
+                  {scanResult ? `${scanResult.itemCount} cleanable locations` : '%TEMP%, Shaders & Update cache'}
                 </div>
               </div>
 
               <div className="glass-card interactive" onClick={() => setActiveModule('network_shield')}>
-                <Shield size={24} color="#18e299" />
-                <div style={{ fontSize: 15, fontWeight: 700, marginTop: 10 }}>AdGuard & AI Pet</div>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
-                  Real-time DNS Shield, Stealth Mode & ScamAdviser
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Shield size={24} color="#18e299" />
+                  <span className="metric-pill" style={{ color: '#18e299' }}>Shield Active</span>
                 </div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#18e299', marginTop: 10 }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#18e299', marginTop: 12 }}>
                   {adsBlocked + trackersBlocked} Blocked
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
+                  {formatBytes(dataSavedBytes)} bandwidth saved
                 </div>
               </div>
 
               <div className="glass-card interactive" onClick={() => setActiveModule('performance')}>
-                <Cpu size={24} color="#00e5ff" />
-                <div style={{ fontSize: 15, fontWeight: 700, marginTop: 10 }}>Performance & RAM</div>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
-                  Memory used: {formatBytes(telemetry.ramUsedBytes)} / {formatBytes(telemetry.ramTotalBytes)}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Cpu size={24} color="#00e5ff" />
+                  <span className="metric-pill">Live WMI</span>
                 </div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#00e5ff', marginTop: 10 }}>
-                  CPU {telemetry.cpuPercent}%
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#00e5ff', marginTop: 12 }}>
+                  {formatBytes(telemetry.ramUsedBytes)} Used
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
+                  CPU {telemetry.cpuPercent}% • Free Standby {formatBytes(telemetry.ramFreeBytes)}
                 </div>
               </div>
 
               <div className="glass-card interactive" onClick={() => setActiveModule('battery_lifeguard')}>
-                <BatteryCharging size={24} color="#ffbe0b" />
-                <div style={{ fontSize: 15, fontWeight: 700, marginTop: 10 }}>Battery & Thermal</div>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
-                  Health {telemetry.battery.healthPercent}% • {telemetry.battery.isCharging ? 'AC Charging' : 'On Battery'}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <BatteryCharging size={24} color="#ffbe0b" />
+                  <span className="metric-pill" style={{ color: '#ffbe0b' }}>
+                    {telemetry.battery.isCharging ? 'AC Power' : 'Battery'}
+                  </span>
                 </div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#ffbe0b', marginTop: 10 }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#ffbe0b', marginTop: 12 }}>
                   {telemetry.battery.percent}% • {telemetry.battery.temperatureC}°C
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
+                  Health {telemetry.battery.healthPercent}% • {telemetry.battery.cycleCount} Cycles
                 </div>
               </div>
 
               <div className="glass-card interactive" onClick={() => setActiveModule('my_tools')}>
-                <Wrench size={24} color="#a66bff" />
-                <div style={{ fontSize: 15, fontWeight: 700, marginTop: 10 }}>Storage & Tools</div>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
-                  Free Space: {formatBytes(telemetry.diskFreeBytes)} of {formatBytes(telemetry.diskTotalBytes)}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Wrench size={24} color="#a66bff" />
+                  <span className="metric-pill">Storage</span>
                 </div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#a66bff', marginTop: 10 }}>
-                  12 Pro Utilities
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#a66bff', marginTop: 12 }}>
+                  {formatBytes(telemetry.diskFreeBytes)} Free
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
+                  of {formatBytes(telemetry.diskTotalBytes)} • 12 Pro Utilities
                 </div>
               </div>
             </div>
 
-            {/* Center 3D Neon Scan Button or Results Workspace */}
-            <div className="glass-card" style={{ textAlign: 'center', padding: 28 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
-                <button className="neon-scan-orb" onClick={handleRunScan} disabled={isScanning}>
-                  <Play size={26} fill="#fff" />
-                  <span>{isScanning ? 'SCANNING' : 'SCAN'}</span>
+            {/* Active Cleaning Progress Banner (Non-Blocking) */}
+            {isCleaning && (
+              <div className="clean-progress-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontWeight: 800, color: '#18e299', fontSize: 14 }}>
+                    Purging System Junk & Standby Residuals…
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#00e5ff', fontSize: 13 }}>
+                    Freed: {formatBytes(cleanProgress.freedBytes || 0)} ({cleanProgress.items || 0} items)
+                  </div>
+                </div>
+                <div className="clean-progress-bar">
+                  <div className="clean-progress-fill" style={{ width: '100%' }} />
+                </div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                  Target: {cleanProgress.target || 'Processing directory contents safely…'}
+                </div>
+              </div>
+            )}
+
+            {/* Main Responsive Split Layout (380px Hero vs Full-Width Inspector) */}
+            <div className="hero-grid">
+              {/* Left Column: Quick Action Hero Card */}
+              <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: 26, gap: 16 }}>
+                <button
+                  className="neon-scan-orb"
+                  onClick={handleRunScan}
+                  disabled={isScanning || isCleaning}
+                  style={{ opacity: isCleaning ? 0.75 : 1 }}
+                >
+                  <Play size={28} fill="#fff" />
+                  <span>{isCleaning ? 'CLEANING' : isScanning ? 'SCANNING' : 'SCAN'}</span>
                 </button>
-                <div style={{ fontSize: 15, fontWeight: 700 }}>
-                  {isScanning
-                    ? 'Inspecting Windows Temp, Prefetch, Browser Caches & Threats…'
-                    : 'Click SCAN to run a full 5-stage Smart Care check'}
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 800 }}>
+                    {isCleaning
+                      ? 'Deleting safe junk files without freezing system...'
+                      : isScanning
+                      ? 'Deep inspecting Windows Temp & Caches…'
+                      : scanResult
+                      ? 'System Analysis Complete'
+                      : 'Smart Care Full System Check'}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
+                    {scanResult
+                      ? `Ready to reclaim ${formatBytes(scanResult.totalBytes)} safe disk space`
+                      : 'One-click full system purge, RAM flush & threat shield check'}
+                  </div>
+                </div>
+
+                {/* 1-Click Fast Actions Stack */}
+                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 9, marginTop: 4 }}>
+                  <button
+                    className="btn-primary"
+                    style={{ justifyContent: 'center', padding: '10px 14px', width: '100%' }}
+                    onClick={() => handleCleanSelected(true)}
+                    disabled={isCleaning || !scanResult}
+                  >
+                    <Trash2 size={15} /> Clean Safe Items ({scanResult ? formatBytes(scanResult.totalBytes) : '0 MB'})
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    style={{ justifyContent: 'center', padding: '9px 14px', width: '100%' }}
+                    onClick={handleOptimizeRam}
+                    disabled={isCleaning}
+                  >
+                    <Zap size={14} color="#00e5ff" /> Purge Physical Standby RAM
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    style={{ justifyContent: 'center', padding: '9px 14px', width: '100%' }}
+                    onClick={handleFlushDns}
+                    disabled={isCleaning}
+                  >
+                    <RotateCcw size={14} color="#18e299" /> Flush DNS Resolver Cache
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    style={{
+                      justifyContent: 'center',
+                      padding: '9px 14px',
+                      width: '100%',
+                      background: gameTurbo ? 'rgba(24, 226, 153, 0.22)' : 'rgba(255,255,255,0.08)',
+                      borderColor: gameTurbo ? '#18e299' : 'transparent'
+                    }}
+                    onClick={handleToggleGameTurbo}
+                    disabled={isCleaning}
+                  >
+                    <Gamepad2 size={14} color={gameTurbo ? '#18e299' : '#fff'} />
+                    {gameTurbo ? 'Game Turbo: Activated' : 'Game Turbo Accelerator'}
+                  </button>
+                </div>
+
+                {/* System Specs Pill at bottom of left column */}
+                <div style={{ marginTop: 'auto', paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.1)', width: '100%', display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-secondary)' }}>
+                  <span>Uptime: {Math.floor(telemetry.uptimeSeconds / 3600)}h {Math.floor((telemetry.uptimeSeconds % 3600) / 60)}m</span>
+                  <span>Battery Health: {telemetry.battery.healthPercent}%</span>
                 </div>
               </div>
 
-              {scanResult && (
-                <div style={{ marginTop: 22, textAlign: 'left' }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: 12
-                    }}
-                  >
-                    <div style={{ fontSize: 16, fontWeight: 800 }}>
-                      Found {formatBytes(scanResult.totalBytes)} ({scanResult.itemCount} items)
+              {/* Right Column: Hardware Meters & Cleanable Breakdown */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {/* Hardware Gauges Row */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
+                  <div className="glass-card" style={{ padding: 18 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700 }}>Physical Working Set RAM</span>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: '#00e5ff' }}>
+                        {formatBytes(telemetry.ramUsedBytes)} / {formatBytes(telemetry.ramTotalBytes)}
+                      </span>
                     </div>
-                    <div style={{ display: 'flex', gap: 10 }}>
-                      <button className="btn-secondary" onClick={() => handleCleanSelected(true)}>
-                        <CheckCircle2 size={14} color="#18e299" /> Safe to Clean Instant
-                      </button>
-                      <button className="btn-primary" onClick={() => handleCleanSelected(false)}>
-                        <Trash2 size={14} /> Clean Selected ({formatBytes(scanResult.totalBytes)})
-                      </button>
+                    <div style={{ width: '100%', height: 8, background: 'rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          height: '100%',
+                          width: `${Math.round((telemetry.ramUsedBytes / telemetry.ramTotalBytes) * 100)}%`,
+                          background: 'linear-gradient(90deg, #00e5ff, #8b3dff)',
+                          borderRadius: 4
+                        }}
+                      />
+                    </div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 6, display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Free Standby: {formatBytes(telemetry.ramFreeBytes)}</span>
+                      <span>{Math.round((telemetry.ramUsedBytes / telemetry.ramTotalBytes) * 100)}% Load</span>
                     </div>
                   </div>
 
-                  <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {scanResult.items.slice(0, 40).map((item: any) => (
+                  <div className="glass-card" style={{ padding: 18 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700 }}>Windows System Drive (C:)</span>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: '#a66bff' }}>
+                        {formatBytes(telemetry.diskFreeBytes)} Free
+                      </span>
+                    </div>
+                    <div style={{ width: '100%', height: 8, background: 'rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden' }}>
                       <div
-                        key={item.id}
                         style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          padding: '9px 12px',
-                          borderRadius: 8,
-                          background: 'rgba(0,0,0,0.22)',
-                          fontSize: 12.5
+                          height: '100%',
+                          width: `${Math.round((telemetry.diskUsedBytes / telemetry.diskTotalBytes) * 100)}%`,
+                          background: 'linear-gradient(90deg, #a66bff, #ff2a85)',
+                          borderRadius: 4
                         }}
-                      >
-                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '75%' }}>
-                          <span style={{ fontWeight: 700 }}>{item.title}</span>{' '}
-                          <span style={{ color: 'var(--text-secondary)', fontSize: 11 }}>({item.parentTitle})</span>
-                        </div>
-                        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#00e5ff' }}>
-                          {formatBytes(item.sizeBytes)}
-                        </span>
-                      </div>
-                    ))}
+                      />
+                    </div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 6, display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Total: {formatBytes(telemetry.diskTotalBytes)}</span>
+                      <span>{Math.round((telemetry.diskUsedBytes / telemetry.diskTotalBytes) * 100)}% Used</span>
+                    </div>
                   </div>
                 </div>
-              )}
+
+                {/* Cleanable Target Locations List */}
+                <div className="glass-card" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 800 }}>
+                        {scanResult
+                          ? `Inspection Results: ${formatBytes(scanResult.totalBytes)} Detected Across ${scanResult.itemCount} Targets`
+                          : 'Smart Care Target Categories (Windows 10 & 11)'}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                        {scanResult
+                          ? 'Select categories to clean or click Safe to Clean Instant'
+                          : 'Deep inspection covers temporary directories, browser caches, crash dumps and shader caches.'}
+                      </div>
+                    </div>
+                    {scanResult && (
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="btn-secondary" onClick={() => handleCleanSelected(true)} disabled={isCleaning}>
+                          <CheckCircle2 size={13} color="#18e299" /> Safe Instant
+                        </button>
+                        <button className="btn-primary" onClick={() => handleCleanSelected(false)} disabled={isCleaning}>
+                          <Trash2 size={13} /> Clean All
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Scrollable Container with responsive height */}
+                  <div className="scroll-table-container" style={{ minHeight: 260, maxHeight: 'calc(100vh - 460px)' }}>
+                    {!scanResult ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12, padding: 12 }}>
+                        {[
+                          ['Windows User Temp (%TEMP%)', 'Cleans active session application cache and setup traces', '#ff2a85'],
+                          ['Windows Recycle Bin', 'Purges deleted desktop, documents and drive files safely', '#18e299'],
+                          ['DirectX Shader Cache', 'Flushes corrupted GPU shaders and D3DSCache', '#00e5ff'],
+                          ['Browser Privacy & Caches', 'Wipes Chrome, Edge, Brave and Firefox residuals', '#ffbe0b'],
+                          ['Developer Caches', 'Cleans npm, Python pip, Gradle and Cargo registry files', '#a66bff'],
+                          ['Windows Crash Dumps', 'Removes orphaned application crash reports and WER logs', '#ff6b4a']
+                        ].map(([title, desc, clr], i) => (
+                          <div key={i} style={{ padding: 14, borderRadius: 10, background: 'rgba(0,0,0,0.22)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: clr }}>{title}</div>
+                            <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 4 }}>{desc}</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      scanResult.items.map((item: any) => (
+                        <div
+                          key={item.id}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '10px 14px',
+                            borderRadius: 10,
+                            background: 'rgba(0,0,0,0.24)',
+                            border: '1px solid rgba(255,255,255,0.06)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, maxWidth: '75%' }}>
+                            <input
+                              type="checkbox"
+                              checked={item.selected}
+                              onChange={() => {
+                                const copy = { ...scanResult };
+                                const found = copy.items.find((x: any) => x.id === item.id);
+                                if (found) found.selected = !found.selected;
+                                setScanResult(copy);
+                              }}
+                              style={{ cursor: 'pointer' }}
+                            />
+                            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ fontWeight: 700, fontSize: 13 }}>{item.title}</span>{' '}
+                              <span style={{ color: 'var(--text-secondary)', fontSize: 11 }}>({item.parentTitle})</span>
+                              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {item.path}
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, background: 'rgba(24, 226, 153, 0.15)', color: '#18e299', fontWeight: 600 }}>
+                              {item.safety}
+                            </span>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#00e5ff', fontSize: 13 }}>
+                              {formatBytes(item.sizeBytes)}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -770,38 +984,58 @@ export default function App() {
         {/* 2. MODULE: SYSTEM JUNK & BROWSER CLEANUP */}
         {/* ============================================================== */}
         {(activeModule === 'system_junk' || activeModule === 'browser_cleanup') && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+          <div className="workspace-container">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h1 style={{ fontSize: 24, fontWeight: 800 }}>
                   {activeModule === 'system_junk' ? 'Windows System Junk Cleaner' : 'Browser Privacy & Cache Cleaner'}
                 </h1>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                   {activeModule === 'system_junk'
-                    ? 'Purge %TEMP%, Windows Temp, Prefetch, DirectX Shaders & Windows Update leftovers.'
+                    ? 'Purge %TEMP%, Windows Temp, Prefetch, DirectX Shaders & Windows Update leftovers without freezing.'
                     : 'Clear Chrome, Microsoft Edge, Brave, and Firefox caches, cookies & tracking logs.'}
                 </p>
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
-                <button className="btn-secondary" onClick={handleRunScan}>
+                <button className="btn-secondary" onClick={handleRunScan} disabled={isCleaning}>
                   <RotateCcw size={14} /> Rescan
                 </button>
-                <button className="btn-primary" onClick={() => handleCleanSelected(false)}>
-                  <Trash2 size={14} /> Clean Safe Items
+                <button className="btn-primary" onClick={() => handleCleanSelected(false)} disabled={isCleaning || !scanResult}>
+                  <Trash2 size={14} /> {isCleaning ? 'Cleaning in Progress…' : 'Clean Safe Items'}
                 </button>
               </div>
             </div>
 
-            <div className="glass-card">
+            {/* Active Cleaning Progress Banner */}
+            {isCleaning && (
+              <div className="clean-progress-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontWeight: 800, color: '#18e299', fontSize: 14 }}>
+                    Purging Selected Files Asynchronously…
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#00e5ff', fontSize: 13 }}>
+                    Freed: {formatBytes(cleanProgress.freedBytes || 0)} ({cleanProgress.items || 0} items)
+                  </div>
+                </div>
+                <div className="clean-progress-bar">
+                  <div className="clean-progress-fill" style={{ width: '100%' }} />
+                </div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                  Cleaning: {cleanProgress.target || 'Purging files safely…'}
+                </div>
+              </div>
+            )}
+
+            <div className="glass-card" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
               {!scanResult ? (
-                <div style={{ padding: 40, textAlign: 'center' }}>
-                  <p style={{ marginBottom: 12 }}>Click Rescan to inspect cleanable files.</p>
+                <div style={{ padding: 60, textAlign: 'center' }}>
+                  <p style={{ marginBottom: 14, color: 'var(--text-secondary)' }}>Click Scan to inspect cleanable files.</p>
                   <button className="btn-primary" onClick={handleRunScan}>
                     Scan Now
                   </button>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div className="scroll-table-container">
                   {scanResult.items
                     .filter((item: any) =>
                       activeModule === 'browser_cleanup' ? item.category === 'Browser Cleanup' : item.category !== 'Browser Cleanup'
@@ -813,19 +1047,38 @@ export default function App() {
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'center',
-                          padding: '10px 14px',
+                          padding: '12px 16px',
                           borderRadius: 10,
-                          background: 'rgba(0,0,0,0.28)'
+                          background: 'rgba(0,0,0,0.26)',
+                          border: '1px solid rgba(255,255,255,0.05)'
                         }}
                       >
-                        <div>
-                          <div style={{ fontSize: 13.5, fontWeight: 700 }}>{item.title}</div>
-                          <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
-                            {item.parentTitle} • {item.path}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, maxWidth: '75%' }}>
+                          <input
+                            type="checkbox"
+                            checked={item.selected}
+                            onChange={() => {
+                              const copy = { ...scanResult };
+                              const found = copy.items.find((x: any) => x.id === item.id);
+                              if (found) found.selected = !found.selected;
+                              setScanResult(copy);
+                            }}
+                            style={{ cursor: 'pointer' }}
+                          />
+                          <div>
+                            <div style={{ fontSize: 13.5, fontWeight: 700 }}>{item.title}</div>
+                            <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                              {item.parentTitle} • {item.path}
+                            </div>
                           </div>
                         </div>
-                        <div style={{ fontWeight: 800, color: '#00e5ff', fontFamily: 'monospace' }}>
-                          {formatBytes(item.sizeBytes)}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, background: 'rgba(24, 226, 153, 0.15)', color: '#18e299', fontWeight: 600 }}>
+                            {item.safety}
+                          </span>
+                          <span style={{ fontWeight: 800, color: '#00e5ff', fontFamily: 'monospace', fontSize: 14 }}>
+                            {formatBytes(item.sizeBytes)}
+                          </span>
                         </div>
                       </div>
                     ))}
@@ -866,7 +1119,7 @@ export default function App() {
               {loadingApps ? (
                 <div style={{ padding: 40, textAlign: 'center' }}>Scanning Windows registry for installed applications…</div>
               ) : (
-                <div style={{ maxHeight: 520, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ maxHeight: 'calc(100vh - 250px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {installedApps
                     .filter((app) => (app.name || '').toLowerCase().includes(appSearch.toLowerCase()))
                     .map((app, idx) => (
@@ -958,7 +1211,7 @@ export default function App() {
                   </button>
                 </div>
               ) : (
-                <div style={{ maxHeight: 520, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ maxHeight: 'calc(100vh - 250px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {largeFiles
                     .filter((f) => largeFileCategory === 'ALL' || f.category === largeFileCategory)
                     .map((file, idx) => (
@@ -1659,7 +1912,7 @@ export default function App() {
             </div>
 
             <div className="glass-card">
-              <div style={{ maxHeight: 520, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ maxHeight: 'calc(100vh - 250px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {telemetry.processes
                   .filter((p: any) => (p.name || '').toLowerCase().includes(procSearch.toLowerCase()))
                   .map((proc: any) => (

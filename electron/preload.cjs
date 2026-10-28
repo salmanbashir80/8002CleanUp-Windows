@@ -26,5 +26,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const listener = (_event, data) => callback(data);
     ipcRenderer.on('clipboard-url-cleaned', listener);
     return () => ipcRenderer.removeListener('clipboard-url-cleaned', listener);
+  },
+  onCleanProgress: (callback) => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on('clean-progress', listener);
+    return () => ipcRenderer.removeListener('clean-progress', listener);
   }
 });
