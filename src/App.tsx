@@ -580,198 +580,165 @@ export default function App() {
         </div>
 
         <div className="nav-compact-list">
-          {/* 1. Smart Care Dashboard */}
+          {/* Section: SMART CARE */}
+          <div className="nav-section-title">Overview</div>
           <button
             className={`nav-btn ${activeModule === 'smart_care' ? 'active' : ''}`}
             onClick={() => setActiveModule('smart_care')}
           >
-            <Sparkles size={15} color="#00e5ff" />
-            <span>Smart Care</span>
+            <Sparkles size={14} color="#00f2fe" />
+            <span>Smart Care Dashboard</span>
             <span className="nav-badge-count">Live</span>
           </button>
 
-          {/* 2. System & Deep Clean (4 Tools) */}
-          <div>
-            <button
-              className={`nav-btn ${CLEANUP_TABS.some(t => t.id === activeModule) ? 'active' : ''}`}
-              onClick={() => {
-                if (!CLEANUP_TABS.some(t => t.id === activeModule)) {
-                  setActiveModule('system_junk');
-                  if (!scanResult) handleRunScan();
-                }
-              }}
-            >
-              <Trash2 size={15} color="#ff2a85" />
-              <span>System & Deep Clean</span>
-              <span className="nav-badge-count">4</span>
-            </button>
-            {CLEANUP_TABS.some(t => t.id === activeModule) && (
-              <div className="nav-sub-list">
-                {CLEANUP_TABS.map(tab => {
-                  const SubIcon = tab.icon;
-                  const isSubActive = activeModule === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      className={`nav-sub-btn ${isSubActive ? 'active' : ''}`}
-                      onClick={() => {
-                        if (tab.id === 'system_junk' || tab.id === 'browser_cleanup') {
-                          setCategoryFilter(tab.id === 'system_junk' ? 'System Junk' : 'Browser Cleanup');
-                        }
-                        setActiveModule(tab.id);
-                      }}
-                    >
-                      <SubIcon size={12} />
-                      <span>{tab.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          {/* Section: CLEANUP SUITE */}
+          <div className="nav-section-title">Cleanup Suite</div>
+          <button
+            className={`nav-btn ${activeModule === 'system_junk' ? 'active' : ''}`}
+            onClick={() => {
+              setCategoryFilter('System Junk');
+              setActiveModule('system_junk');
+              if (!scanResult) handleRunScan();
+            }}
+          >
+            <Trash2 size={14} color="#ff4757" />
+            <span>System Junk Cleaner</span>
+          </button>
+          <button
+            className={`nav-btn ${activeModule === 'deep_scan' ? 'active' : ''}`}
+            onClick={() => setActiveModule('deep_scan')}
+          >
+            <Sparkles size={14} color="#00e676" />
+            <span>13-Phase Deep Scan</span>
+          </button>
+          <button
+            className={`nav-btn ${activeModule === 'registry_cleaner' ? 'active' : ''}`}
+            onClick={() => setActiveModule('registry_cleaner')}
+          >
+            <Database size={14} color="#ff3860" />
+            <span>Windows Registry Cleaner</span>
+          </button>
+          <button
+            className={`nav-btn ${activeModule === 'browser_cleanup' ? 'active' : ''}`}
+            onClick={() => {
+              setCategoryFilter('Browser Cleanup');
+              setActiveModule('browser_cleanup');
+              if (!scanResult) handleRunScan();
+            }}
+          >
+            <Globe size={14} color="#00f2fe" />
+            <span>Browser Privacy & Cache</span>
+          </button>
 
-          {/* 3. Storage & Recovery (4 Tools) */}
-          <div>
-            <button
-              className={`nav-btn ${STORAGE_TABS.some(t => t.id === activeModule) ? 'active' : ''}`}
-              onClick={() => {
-                if (!STORAGE_TABS.some(t => t.id === activeModule)) {
-                  setActiveModule('data_recovery');
-                }
-              }}
-            >
-              <LifeBuoy size={15} color="#00e5ff" />
-              <span>Storage & Recovery</span>
-              <span className="nav-badge-count">4</span>
-            </button>
-            {STORAGE_TABS.some(t => t.id === activeModule) && (
-              <div className="nav-sub-list">
-                {STORAGE_TABS.map(tab => {
-                  const SubIcon = tab.icon;
-                  const isSubActive = activeModule === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      className={`nav-sub-btn ${isSubActive ? 'active' : ''}`}
-                      onClick={() => setActiveModule(tab.id)}
-                    >
-                      <SubIcon size={12} />
-                      <span>{tab.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          {/* Section: STORAGE & RECOVERY */}
+          <div className="nav-section-title">Storage & Recovery</div>
+          <button
+            className={`nav-btn ${activeModule === 'data_recovery' ? 'active' : ''}`}
+            onClick={() => setActiveModule('data_recovery')}
+          >
+            <LifeBuoy size={14} color="#00f2fe" />
+            <span>Deep File Recovery</span>
+          </button>
+          <button
+            className={`nav-btn ${activeModule === 'space_lens' ? 'active' : ''}`}
+            onClick={() => setActiveModule('space_lens')}
+          >
+            <HardDrive size={14} color="#ffab00" />
+            <span>Space Lens (Large Files)</span>
+          </button>
+          <button
+            className={`nav-btn ${activeModule === 'app_leftovers' ? 'active' : ''}`}
+            onClick={() => setActiveModule('app_leftovers')}
+          >
+            <Layers size={14} color="#9d4edd" />
+            <span>App Uninstaller & Leftovers</span>
+          </button>
+          <button
+            className={`nav-btn ${activeModule === 'shredder' ? 'active' : ''}`}
+            onClick={() => setActiveModule('shredder')}
+          >
+            <Lock size={14} color="#ff4757" />
+            <span>DoD 5220 File Shredder</span>
+          </button>
 
-          {/* 4. Security & Accounts (2 Tools) */}
-          <div>
-            <button
-              className={`nav-btn ${SECURITY_TABS.some(t => t.id === activeModule) ? 'active' : ''}`}
-              onClick={() => {
-                if (!SECURITY_TABS.some(t => t.id === activeModule)) {
-                  setActiveModule('network_shield');
-                }
-              }}
-            >
-              <Shield size={15} color="#18e299" />
-              <span>Security & Accounts</span>
-              <span className="nav-badge-count">2</span>
-            </button>
-            {SECURITY_TABS.some(t => t.id === activeModule) && (
-              <div className="nav-sub-list">
-                {SECURITY_TABS.map(tab => {
-                  const SubIcon = tab.icon;
-                  const isSubActive = activeModule === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      className={`nav-sub-btn ${isSubActive ? 'active' : ''}`}
-                      onClick={() => setActiveModule(tab.id)}
-                    >
-                      <SubIcon size={12} />
-                      <span>{tab.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          {/* Section: SECURITY & PRIVACY */}
+          <div className="nav-section-title">Security & Accounts</div>
+          <button
+            className={`nav-btn ${activeModule === 'network_shield' ? 'active' : ''}`}
+            onClick={() => setActiveModule('network_shield')}
+          >
+            <Shield size={14} color="#00e676" />
+            <span>AdGuard & AI Pet Shield</span>
+          </button>
+          <button
+            className={`nav-btn ${activeModule === 'power_user' ? 'active' : ''}`}
+            onClick={() => setActiveModule('power_user')}
+          >
+            <Users size={14} color="#00f2fe" />
+            <span>Power User & Accounts</span>
+          </button>
 
-          {/* 5. Speed & Performance (4 Tools) */}
-          <div>
-            <button
-              className={`nav-btn ${PERFORMANCE_TABS.some(t => t.id === activeModule) ? 'active' : ''}`}
-              onClick={() => {
-                if (!PERFORMANCE_TABS.some(t => t.id === activeModule)) {
-                  setActiveModule('performance');
-                }
-              }}
-            >
-              <Zap size={15} color="#ffbe0b" />
-              <span>Speed & Performance</span>
-              <span className="nav-badge-count">4</span>
-            </button>
-            {PERFORMANCE_TABS.some(t => t.id === activeModule) && (
-              <div className="nav-sub-list">
-                {PERFORMANCE_TABS.map(tab => {
-                  const SubIcon = tab.icon;
-                  const isSubActive = activeModule === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      className={`nav-sub-btn ${isSubActive ? 'active' : ''}`}
-                      onClick={() => setActiveModule(tab.id)}
-                    >
-                      <SubIcon size={12} />
-                      <span>{tab.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          {/* Section: SPEED & PERFORMANCE */}
+          <div className="nav-section-title">Speed & Performance</div>
+          <button
+            className={`nav-btn ${activeModule === 'performance' ? 'active' : ''}`}
+            onClick={() => setActiveModule('performance')}
+          >
+            <Zap size={14} color="#ffab00" />
+            <span>RAM & Speed Booster</span>
+          </button>
+          <button
+            className={`nav-btn ${activeModule === 'speed_test' ? 'active' : ''}`}
+            onClick={() => setActiveModule('speed_test')}
+          >
+            <Wifi size={14} color="#00f2fe" />
+            <span>Real-Time Speed Test</span>
+          </button>
+          <button
+            className={`nav-btn ${activeModule === 'startup_manager' ? 'active' : ''}`}
+            onClick={() => setActiveModule('startup_manager')}
+          >
+            <Rocket size={14} color="#00f2fe" />
+            <span>Startup Boot Accelerator</span>
+          </button>
+          <button
+            className={`nav-btn ${activeModule === 'activity_monitor' ? 'active' : ''}`}
+            onClick={() => setActiveModule('activity_monitor')}
+          >
+            <Activity size={14} color="#00f2fe" />
+            <span>Real-Time Tasklist</span>
+          </button>
 
-          {/* 6. Hardware & Drivers (3 Tools) */}
-          <div>
-            <button
-              className={`nav-btn ${HARDWARE_TABS.some(t => t.id === activeModule) ? 'active' : ''}`}
-              onClick={() => {
-                if (!HARDWARE_TABS.some(t => t.id === activeModule)) {
-                  setActiveModule('hardware_deep');
-                }
-              }}
-            >
-              <Cpu size={15} color="#00e5ff" />
-              <span>Hardware & Drivers</span>
-              <span className="nav-badge-count">3</span>
-            </button>
-            {HARDWARE_TABS.some(t => t.id === activeModule) && (
-              <div className="nav-sub-list">
-                {HARDWARE_TABS.map(tab => {
-                  const SubIcon = tab.icon;
-                  const isSubActive = activeModule === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      className={`nav-sub-btn ${isSubActive ? 'active' : ''}`}
-                      onClick={() => setActiveModule(tab.id)}
-                    >
-                      <SubIcon size={12} />
-                      <span>{tab.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          {/* Section: HARDWARE & DIAGNOSTICS */}
+          <div className="nav-section-title">Hardware & Drivers</div>
+          <button
+            className={`nav-btn ${activeModule === 'hardware_deep' ? 'active' : ''}`}
+            onClick={() => setActiveModule('hardware_deep')}
+          >
+            <Cpu size={14} color="#00f2fe" />
+            <span>Hardware & Firmware Studio</span>
+          </button>
+          <button
+            className={`nav-btn ${activeModule === 'driver_updater' ? 'active' : ''}`}
+            onClick={() => setActiveModule('driver_updater')}
+          >
+            <Sliders size={14} color="#00f2fe" />
+            <span>Driver Inspector & Updates</span>
+          </button>
+          <button
+            className={`nav-btn ${activeModule === 'battery_lifeguard' ? 'active' : ''}`}
+            onClick={() => setActiveModule('battery_lifeguard')}
+          >
+            <BatteryCharging size={14} color="#00e676" />
+            <span>Battery & Thermal HUD</span>
+          </button>
 
-          {/* 7. All 18 Tools Hub */}
+          <div className="nav-section-title">All Tools</div>
           <button
             className={`nav-btn ${activeModule === 'my_tools' ? 'active' : ''}`}
             onClick={() => setActiveModule('my_tools')}
           >
-            <Wrench size={15} color="#a66bff" />
+            <Wrench size={14} color="#9d4edd" />
             <span>All 18 Tools Hub</span>
             <span className="nav-badge-count">18</span>
           </button>
@@ -886,7 +853,7 @@ export default function App() {
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 6 }}>
-            <span style={{ color: 'var(--text-secondary)' }}>v2.0.0 Pro</span>
+            <span style={{ color: 'var(--text-secondary)' }}>v2.1.0 Pro</span>
             <span style={{ color: '#18e299', fontWeight: 600 }}>● Live Engine</span>
           </div>
           <button

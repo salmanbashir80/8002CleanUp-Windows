@@ -184,24 +184,51 @@ function positionAndShowTrayWindow(trayBounds) {
   trayWindow.focus();
 }
 
+function getTrayIconImage() {
+  const tray16 = path.join(__dirname, '../build/tray-icon-16.png');
+  const tray32 = path.join(__dirname, '../build/tray-icon.png');
+  if (fs.existsSync(tray16)) {
+    try {
+      return nativeImage.createFromPath(tray16);
+    } catch (_e) {}
+  }
+  if (fs.existsSync(tray32)) {
+    try {
+      const img = nativeImage.createFromPath(tray32);
+      return img.resize({ width: 16, height: 16 });
+    } catch (_e) {}
+  }
+  return getAppIconImage();
+}
+
 function createSystemTray() {
-  const iconImg = getAppIconImage();
-  if (!iconImg) return;
+  const trayIcon = getTrayIconImage();
+  if (!trayIcon) return;
   try {
-    appTray = new Tray(iconImg);
-    appTray.setToolTip('8002CleanUp Pro — Live RAM & System Notification Panel');
+    appTray = new Tray(trayIcon);
+    appTray.setToolTip('8002CleanUp Pro — Live System Guardian');
+    appTray.setIgnoreDoubleClickEvents(false);
 
     const contextMenu = Menu.buildFromTemplate([
-      {
-        label: 'Open Notification Panel (RAM & System HUD)',
-        click: () => positionAndShowTrayWindow()
-      },
       {
         label: 'Open 8002CleanUp Pro Dashboard',
         click: () => {
           if (mainWindow && !mainWindow.isDestroyed()) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
             mainWindow.show();
             mainWindow.focus();
+          }
+        }
+      },
+      {
+        label: 'Open Notification Panel HUD',
+        click: () => positionAndShowTrayWindow()
+      },
+      {
+        label: '⚡ Instant Free Up RAM',
+        click: async () => {
+          if (process.platform === 'win32') {
+            await execAsync('powershell -NoProfile -Command "[System.GC]::Collect(); [System.GC]::WaitForPendingFinalizers()"', 4000);
           }
         }
       },
@@ -216,15 +243,24 @@ function createSystemTray() {
     ]);
 
     appTray.on('click', (_event, bounds) => {
-      if (trayWindow && !trayWindow.isDestroyed() && trayWindow.isVisible()) {
-        trayWindow.hide();
-      } else {
-        positionAndShowTrayWindow(bounds);
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        if (!mainWindow.isVisible() || mainWindow.isMinimized()) {
+          if (mainWindow.isMinimized()) mainWindow.restore();
+          mainWindow.show();
+          mainWindow.focus();
+        } else {
+          if (trayWindow && !trayWindow.isDestroyed() && trayWindow.isVisible()) {
+            trayWindow.hide();
+          } else {
+            positionAndShowTrayWindow(bounds);
+          }
+        }
       }
     });
 
     appTray.on('double-click', () => {
       if (mainWindow && !mainWindow.isDestroyed()) {
+        if (mainWindow.isMinimized()) mainWindow.restore();
         mainWindow.show();
         mainWindow.focus();
       }
