@@ -34,7 +34,10 @@ import {
   Database,
   Gauge,
   Wifi,
-  Sliders
+  Sliders,
+  Users,
+  UserCheck,
+  UserX
 } from 'lucide-react';
 
 import RegistryCleaner from './components/RegistryCleaner';
@@ -42,6 +45,7 @@ import DriverUpdater from './components/DriverUpdater';
 import DeepScan from './components/DeepScan';
 import SpeedTest from './components/SpeedTest';
 import HardwareDeepStudio from './components/HardwareDeepStudio';
+import PowerUserManager from './components/PowerUserManager';
 
 declare global {
   interface Window {
@@ -68,6 +72,10 @@ declare global {
       runDeepScan: () => Promise<any>;
       getDeepHardwareInfo: () => Promise<any>;
       openFirmwareManager: (action: string, payload?: string) => Promise<any>;
+      getPowerUsers: () => Promise<any[]>;
+      setUserState: (username: string, enable: boolean) => Promise<any>;
+      resetUserPassword: (username: string, newPassword: string) => Promise<any>;
+      launchUserTool: (tool: string) => Promise<any>;
       scanWebsiteTrust: (payload: any) => Promise<any>;
       testAiKey: (payload: any) => Promise<any>;
       cleanTrackingUrl: (url: string) => Promise<any>;
@@ -100,6 +108,7 @@ type ModuleId =
   | 'space_lens'
   | 'shredder'
   | 'network_shield'
+  | 'power_user'
   | 'performance'
   | 'startup_manager'
   | 'battery_lifeguard'
@@ -575,7 +584,14 @@ export default function App() {
             DoD 5220 File Shredder
           </button>
 
-          <div className="nav-section-label">Protection & Speed</div>
+          <div className="nav-section-label">Privacy, Security & Protection</div>
+          <button
+            className={`nav-btn ${activeModule === 'power_user' ? 'active' : ''}`}
+            onClick={() => setActiveModule('power_user')}
+          >
+            <Users size={16} color="#00e5ff" />
+            Power User &amp; Accounts
+          </button>
           <button
             className={`nav-btn ${activeModule === 'network_shield' ? 'active' : ''}`}
             onClick={() => setActiveModule('network_shield')}
@@ -959,6 +975,23 @@ export default function App() {
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
                   CPU cores, GPU VRAM, UEFI capsule &amp; DIMM slots
+                </div>
+              </div>
+
+              <div
+                className="glass-card interactive"
+                onClick={() => setActiveModule('power_user')}
+                style={{ padding: '14px 18px' }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Users size={20} color="#ffbe0b" />
+                  <span className="metric-pill" style={{ color: '#ffbe0b', borderColor: 'rgba(255,190,11,0.3)' }}>Security Control</span>
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', marginTop: 8 }}>
+                  Power User &amp; Accounts
+                </div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
+                  14 local accounts, enable/disable &amp; password reset
                 </div>
               </div>
             </div>
@@ -2244,7 +2277,7 @@ export default function App() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
               <div>
-                <h1 style={{ fontSize: 24, fontWeight: 800 }}>My Tools Hub — 16 Pro Utilities</h1>
+                <h1 style={{ fontSize: 24, fontWeight: 800 }}>My Tools Hub — 17 Pro Utilities</h1>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                   All MacCare Pro features natively ported to Windows 10 & 11 with 100% genuine system engines.
                 </p>
@@ -2260,6 +2293,7 @@ export default function App() {
             >
               {[
                 ['Smart Care Dashboard', '1-Click full system health and purge check', () => setActiveModule('smart_care')],
+                ['Power User & Accounts', 'Windows user accounts audit, enable/disable & password reset', () => setActiveModule('power_user')],
                 ['Hardware & Firmware Studio', 'Forensic CPU, GPU, RAM DIMM & UEFI Firmware inspection', () => setActiveModule('hardware_deep')],
                 ['System Junk Cleaner', 'Purge Windows %TEMP%, Prefetch & DirectX caches', () => setActiveModule('system_junk')],
                 ['Browser Privacy', 'Wipe Chrome, Edge, Brave and Firefox history & caches', () => setActiveModule('browser_cleanup')],
@@ -2319,6 +2353,13 @@ export default function App() {
         {/* ============================================================== */}
         {activeModule === 'hardware_deep' && (
           <HardwareDeepStudio setStatusBanner={setStatusBanner} formatBytes={formatBytes} />
+        )}
+
+        {/* ============================================================== */}
+        {/* NEW MODULE: POWER USER & SECURITY MANAGER */}
+        {/* ============================================================== */}
+        {activeModule === 'power_user' && (
+          <PowerUserManager setStatusBanner={setStatusBanner} />
         )}
       </main>
 

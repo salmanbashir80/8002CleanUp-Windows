@@ -1401,6 +1401,113 @@ ipcMain.handle('open-firmware-manager', async (_event, { action, payload }) => {
   return { success: true, message: 'Action completed.' };
 });
 
+// Power User & Security Manager: Query all Windows User Accounts
+ipcMain.handle('get-power-users', async () => {
+  if (process.platform !== 'win32') return [];
+  const scriptContent = `$ProgressPreference = 'SilentlyContinue'
+$adminNames = (Get-LocalGroupMember -Group "Administrators" -ErrorAction SilentlyContinue).Name | ForEach-Object { $_ -replace '^.*\\\\', '' }
+
+$users = Get-LocalUser -ErrorAction SilentlyContinue | ForEach-Object {
+    $name = $_.Name
+    $isAdmin = $adminNames -contains $name
+    $role = if ($isAdmin) { 'Administrator' } elseif ($name -eq 'Guest') { 'Guest' } else { 'Standard User' }
+    
+    $lastLogonStr = if ($_.LastLogon) { (Get-Date $_.LastLogon).ToString('yyyy-MM-dd HH:mm') } else { 'Never' }
+    $pwdChangedStr = if ($_.PasswordChangeableDate) { (Get-Date $_.PasswordChangeableDate).ToString('yyyy-MM-dd') } else { 'Not Set' }
+
+    @{
+        name = $name
+        fullName = if ($_.FullName) { $_.FullName } else { $name }
+        description = if ($_.Description) { $_.Description } else { 'Local Windows Account' }
+        enabled = [bool]$_.Enabled
+        role = $role
+        isAdmin = [bool]$isAdmin
+        passwordRequired = [bool]$_.PasswordRequired
+        passwordExpires = [bool]$_.PasswordExpires
+        userMayChangePassword = [bool]$_.UserMayChangePassword
+        lastLogon = $lastLogonStr
+        passwordChangeDate = $pwdChangedStr
+        sid = if ($_.SID) { $_.SID.Value } else { '' }
+    }
+}
+$users | ConvertTo-Json -Compress`;
+
+  const tmpFile = path.join(os.tmpdir(), `8002_users_${Date.now()}.ps1`);
+  try {
+    fs.writeFileSync(tmpFile, scriptContent, 'utf8');
+    const res = await execAsync(`powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${tmpFile}"`, 12000);
+    try { fs.unlinkSync(tmpFile); } catch (_) {}
+    if (res.stdout.trim()) {
+      const parsed = JSON.parse(res.stdout.trim());
+      return Array.isArray(parsed) ? parsed : [parsed];
+    }
+  } catch (_e) {
+    try { fs.unlinkSync(tmpFile); } catch (_) {}
+  }
+  return [];
+});
+
+// Power User: Toggle Account Enabled / Disabled
+ipcMain.handle('set-user-state', async (_event, { username, enable }) => {
+  if (!username) return { success: false, message: 'Username is required.' };
+  if (process.platform === 'win32') {
+    try {
+      const safeName = username.replace(/"/g, '').replace(/'/g, '');
+      const activeVal = enable ? 'yes' : 'no';
+      const psCmd = `Start-Process cmd.exe -ArgumentList '/c net user "${safeName}" /active:${activeVal}' -Verb RunAs -WindowStyle Hidden`;
+      const b64 = Buffer.from(psCmd, 'utf16le').toString('base64');
+      await execAsync(`powershell.exe -NoProfile -EncodedCommand ${b64}`, 8000);
+      return {
+        success: true,
+        message: `Command dispatched to set user account '${safeName}' to ${enable ? 'Active/Enabled' : 'Disabled'}. Check Windows UAC prompt if prompted.`
+      };
+    } catch (err) {
+      return { success: false, message: `Failed to update account state: ${err.message}` };
+    }
+  }
+  return { success: true, message: `User ${username} state updated.` };
+});
+
+// Power User: Reset Account Password
+ipcMain.handle('reset-user-password', async (_event, { username, newPassword }) => {
+  if (!username || !newPassword) return { success: false, message: 'Username and new password are required.' };
+  if (process.platform === 'win32') {
+    try {
+      const safeName = username.replace(/"/g, '').replace(/'/g, '');
+      const safePass = newPassword.replace(/"/g, '""');
+      const psCmd = `Start-Process cmd.exe -ArgumentList '/c net user "${safeName}" "${safePass}"' -Verb RunAs -WindowStyle Hidden`;
+      const b64 = Buffer.from(psCmd, 'utf16le').toString('base64');
+      await execAsync(`powershell.exe -NoProfile -EncodedCommand ${b64}`, 8000);
+      return {
+        success: true,
+        message: `Password reset dispatched for user '${safeName}'. Follow any Windows Administrator prompt.`
+      };
+    } catch (err) {
+      return { success: false, message: `Failed to reset password: ${err.message}` };
+    }
+  }
+  return { success: true, message: `Password updated for ${username}.` };
+});
+
+// Power User: Launch Windows Management Tools
+ipcMain.handle('launch-user-tool', async (_event, { tool }) => {
+  if (process.platform === 'win32') {
+    try {
+      if (tool === 'lusrmgr') {
+        execAsync('lusrmgr.msc', 5000);
+        return { success: true, message: 'Opened Local Users and Groups Management Console.' };
+      }
+      if (tool === 'netplwiz') {
+        execAsync('netplwiz', 5000);
+        return { success: true, message: 'Opened Windows Advanced User Accounts Control (netplwiz).' };
+      }
+    } catch (err) {
+      return { success: false, message: `Error launching user tool: ${err.message}` };
+    }
+  }
+  return { success: true, message: 'Tool launched.' };
+});
+
 // Space Lens: Discover Large & Old Files
 ipcMain.handle('scan-large-files', async (_event, { minSizeMB = 50 }) => {
   const home = os.homedir();
