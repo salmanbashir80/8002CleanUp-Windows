@@ -21,6 +21,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkDriverUpdates: () => ipcRenderer.invoke('check-driver-updates'),
   testInternetSpeed: () => ipcRenderer.invoke('test-internet-speed'),
   runDeepScan: () => ipcRenderer.invoke('run-deep-scan'),
+  getDeepHardwareInfo: () => ipcRenderer.invoke('get-deep-hardware-info'),
+  openFirmwareManager: (action, payload) => ipcRenderer.invoke('open-firmware-manager', { action, payload }),
   scanWebsiteTrust: (payload) => ipcRenderer.invoke('scan-website-trust', payload),
   testAiKey: (payload) => ipcRenderer.invoke('test-ai-key', payload),
   cleanTrackingUrl: (url) => ipcRenderer.invoke('clean-tracking-url', { url }),

@@ -41,6 +41,7 @@ import RegistryCleaner from './components/RegistryCleaner';
 import DriverUpdater from './components/DriverUpdater';
 import DeepScan from './components/DeepScan';
 import SpeedTest from './components/SpeedTest';
+import HardwareDeepStudio from './components/HardwareDeepStudio';
 
 declare global {
   interface Window {
@@ -65,6 +66,8 @@ declare global {
       checkDriverUpdates: () => Promise<any>;
       testInternetSpeed: () => Promise<any>;
       runDeepScan: () => Promise<any>;
+      getDeepHardwareInfo: () => Promise<any>;
+      openFirmwareManager: (action: string, payload?: string) => Promise<any>;
       scanWebsiteTrust: (payload: any) => Promise<any>;
       testAiKey: (payload: any) => Promise<any>;
       cleanTrackingUrl: (url: string) => Promise<any>;
@@ -101,6 +104,7 @@ type ModuleId =
   | 'startup_manager'
   | 'battery_lifeguard'
   | 'activity_monitor'
+  | 'hardware_deep'
   | 'my_tools';
 
 export default function App() {
@@ -603,6 +607,13 @@ export default function App() {
 
           <div className="nav-section-label">Hardware & Tools</div>
           <button
+            className={`nav-btn ${activeModule === 'hardware_deep' ? 'active' : ''}`}
+            onClick={() => setActiveModule('hardware_deep')}
+          >
+            <Cpu size={16} color="#00e5ff" />
+            Hardware &amp; Firmware Studio
+          </button>
+          <button
             className={`nav-btn ${activeModule === 'driver_updater' ? 'active' : ''}`}
             onClick={() => setActiveModule('driver_updater')}
           >
@@ -931,6 +942,23 @@ export default function App() {
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
                   Cloudflare Edge latency & download Mbps
+                </div>
+              </div>
+
+              <div
+                className="glass-card interactive"
+                onClick={() => setActiveModule('hardware_deep')}
+                style={{ padding: '14px 18px' }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Cpu size={20} color="#00e5ff" />
+                  <span className="metric-pill" style={{ color: '#00e5ff', borderColor: 'rgba(0,229,255,0.3)' }}>Hardware Lab</span>
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', marginTop: 8 }}>
+                  Hardware &amp; Firmware Deep Studio
+                </div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
+                  CPU cores, GPU VRAM, UEFI capsule &amp; DIMM slots
                 </div>
               </div>
             </div>
@@ -2232,6 +2260,7 @@ export default function App() {
             >
               {[
                 ['Smart Care Dashboard', '1-Click full system health and purge check', () => setActiveModule('smart_care')],
+                ['Hardware & Firmware Studio', 'Forensic CPU, GPU, RAM DIMM & UEFI Firmware inspection', () => setActiveModule('hardware_deep')],
                 ['System Junk Cleaner', 'Purge Windows %TEMP%, Prefetch & DirectX caches', () => setActiveModule('system_junk')],
                 ['Browser Privacy', 'Wipe Chrome, Edge, Brave and Firefox history & caches', () => setActiveModule('browser_cleanup')],
                 ['App Uninstaller', 'Inspect and cleanly uninstall Windows software', () => setActiveModule('app_leftovers')],
@@ -2283,6 +2312,13 @@ export default function App() {
         {/* ============================================================== */}
         {activeModule === 'speed_test' && (
           <SpeedTest setStatusBanner={setStatusBanner} />
+        )}
+
+        {/* ============================================================== */}
+        {/* NEW MODULE: HARDWARE & FIRMWARE DEEP STUDIO */}
+        {/* ============================================================== */}
+        {activeModule === 'hardware_deep' && (
+          <HardwareDeepStudio setStatusBanner={setStatusBanner} formatBytes={formatBytes} />
         )}
       </main>
 
