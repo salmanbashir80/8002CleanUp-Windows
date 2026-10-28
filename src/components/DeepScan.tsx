@@ -78,7 +78,7 @@ export default function DeepScan({ setStatusBanner, formatBytes }: Props) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 800 }}>13-Phase Deep Forensic System Scan</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 600 }}>13-Phase Deep Forensic System Scan</h1>
             <span
               style={{
                 fontSize: 11,
@@ -122,21 +122,21 @@ export default function DeepScan({ setStatusBanner, formatBytes }: Props) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
         <div className="glass-card" style={{ padding: '14px 18px' }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Total Cleanable Space Discovered</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#ff2a85', marginTop: 4 }}>
+          <div style={{ fontSize: 24, fontWeight: 600, color: '#ff2a85', marginTop: 4 }}>
             {data ? formatBytes(data.totalBytes) : '0 MB'}
           </div>
         </div>
 
         <div className="glass-card" style={{ padding: '14px 18px' }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>System Junk Files Count</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#00e5ff', marginTop: 4 }}>
+          <div style={{ fontSize: 24, fontWeight: 600, color: '#00e5ff', marginTop: 4 }}>
             {data ? `${data.itemsCount.toLocaleString()} Files` : '0 Files'}
           </div>
         </div>
 
         <div className="glass-card" style={{ padding: '14px 18px' }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Scan Coverage Phases</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#18e299', marginTop: 4 }}>
+          <div style={{ fontSize: 24, fontWeight: 600, color: '#18e299', marginTop: 4 }}>
             13 of 13 Layers Analyzed
           </div>
         </div>
@@ -155,7 +155,7 @@ export default function DeepScan({ setStatusBanner, formatBytes }: Props) {
         ) : !data || data.phasesResult.length === 0 ? (
           <div style={{ padding: 60, textAlign: 'center' }}>
             <CheckCircle2 size={42} color="#18e299" style={{ margin: '0 auto 12px' }} />
-            <div style={{ fontSize: 16, fontWeight: 800 }}>System is Fully Optimized!</div>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>System is Fully Optimized!</div>
             <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginTop: 4 }}>
               Zero redundant files or stale caches found across all 13 inspection phases.
             </div>
@@ -186,7 +186,7 @@ export default function DeepScan({ setStatusBanner, formatBytes }: Props) {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontWeight: 800,
+                      fontWeight: 600,
                       color: '#00e5ff',
                       fontSize: 13
                     }}
@@ -219,7 +219,7 @@ export default function DeepScan({ setStatusBanner, formatBytes }: Props) {
                 </div>
 
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: '#ff2a85' }}>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: '#ff2a85' }}>
                     {formatBytes(phase.sizeBytes)}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>

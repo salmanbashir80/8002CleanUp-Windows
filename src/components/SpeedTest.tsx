@@ -44,7 +44,7 @@ export default function SpeedTest({ setStatusBanner }: Props) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 800 }}>Real-Time Internet Speedometer</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 600 }}>Real-Time Internet Speedometer</h1>
             <span
               style={{
                 fontSize: 11,
@@ -125,7 +125,7 @@ export default function SpeedTest({ setStatusBanner }: Props) {
             >
               <Zap size={48} color="#00e5ff" />
             </div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: '#fff' }}>Measuring Bandwidth Throughput…</div>
+            <div style={{ fontSize: 20, fontWeight: 600, color: '#fff' }}>Measuring Bandwidth Throughput…</div>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
               Streaming test packets through Cloudflare CDN Edge
             </div>
@@ -140,7 +140,7 @@ export default function SpeedTest({ setStatusBanner }: Props) {
               <span
                 style={{
                   fontSize: 72,
-                  fontWeight: 900,
+                  fontWeight: 600,
                   letterSpacing: '-2px',
                   background: 'linear-gradient(135deg, #00e5ff, #8b3dff)',
                   WebkitBackgroundClip: 'text',
@@ -149,7 +149,7 @@ export default function SpeedTest({ setStatusBanner }: Props) {
               >
                 {result.downloadMbps}
               </span>
-              <span style={{ fontSize: 24, fontWeight: 800, color: '#00e5ff' }}>Mbps</span>
+              <span style={{ fontSize: 24, fontWeight: 600, color: '#00e5ff' }}>Mbps</span>
             </div>
 
             <div
@@ -189,7 +189,7 @@ export default function SpeedTest({ setStatusBanner }: Props) {
             >
               <Wifi size={46} color="#00e5ff" />
             </div>
-            <div style={{ fontSize: 20, fontWeight: 800 }}>Ready to Measure Real Speed</div>
+            <div style={{ fontSize: 20, fontWeight: 600 }}>Ready to Measure Real Speed</div>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
               Click the button above to start your live high-speed connection test.
             </div>
@@ -204,7 +204,7 @@ export default function SpeedTest({ setStatusBanner }: Props) {
             <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>Round-Trip Ping / Latency</span>
             <Activity size={18} color="#00e5ff" />
           </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#00e5ff', marginTop: 8 }}>
+          <div style={{ fontSize: 26, fontWeight: 600, color: '#00e5ff', marginTop: 8 }}>
             {result ? `${result.pingMs} ms` : '—'}
           </div>
           <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 4 }}>
@@ -217,7 +217,7 @@ export default function SpeedTest({ setStatusBanner }: Props) {
             <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>Streaming Capability</span>
             <Globe size={18} color="#18e299" />
           </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#18e299', marginTop: 8 }}>
+          <div style={{ fontSize: 26, fontWeight: 600, color: '#18e299', marginTop: 8 }}>
             {result ? (result.downloadMbps >= 50 ? '4K Ultra HD' : 'Full HD 1080p') : '—'}
           </div>
           <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 4 }}>
@@ -230,7 +230,7 @@ export default function SpeedTest({ setStatusBanner }: Props) {
             <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>Edge Server Protocol</span>
             <ArrowDown size={18} color="#ffbe0b" />
           </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#ffbe0b', marginTop: 8 }}>
+          <div style={{ fontSize: 26, fontWeight: 600, color: '#ffbe0b', marginTop: 8 }}>
             HTTP/2 HTTPS
           </div>
           <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 4 }}>

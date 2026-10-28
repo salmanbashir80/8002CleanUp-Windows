@@ -139,7 +139,7 @@ export default function HardwareDeepStudio({ setStatusBanner, formatBytes }: Pro
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 800 }}>Hardware &amp; Firmware Deep Studio</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 600 }}>Hardware &amp; Firmware Deep Studio</h1>
             <span
               style={{
                 fontSize: 11,
@@ -187,7 +187,7 @@ export default function HardwareDeepStudio({ setStatusBanner, formatBytes }: Pro
       {loading && !data ? (
         <div className="glass-card" style={{ padding: 60, textAlign: 'center' }}>
           <Cpu size={42} color="#00e5ff" style={{ margin: '0 auto 12px', animation: 'spin 2s linear infinite' }} />
-          <div style={{ fontSize: 16, fontWeight: 800 }}>Querying Windows Hardware Subsystems…</div>
+          <div style={{ fontSize: 16, fontWeight: 600 }}>Querying Windows Hardware Subsystems…</div>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
             Extracting Win32_Processor, Win32_VideoController, Win32_BIOS, Win32_BaseBoard &amp; Win32_PhysicalMemory
           </div>
@@ -219,7 +219,7 @@ export default function HardwareDeepStudio({ setStatusBanner, formatBytes }: Pro
                   <ShieldCheck size={20} color="#00e5ff" />
                 </div>
                 <div>
-                  <div style={{ fontSize: 16, fontWeight: 800 }}>BIOS &amp; UEFI Capsule Firmware Management</div>
+                  <div style={{ fontSize: 16, fontWeight: 600 }}>BIOS &amp; UEFI Capsule Firmware Management</div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                     Motherboard firmware version, release timestamp, and update controllers
                   </div>
@@ -316,7 +316,7 @@ export default function HardwareDeepStudio({ setStatusBanner, formatBytes }: Pro
                     <Cpu size={18} color="#00e5ff" />
                   </div>
                   <div>
-                    <div style={{ fontSize: 15, fontWeight: 800 }}>Central Processing Unit (CPU)</div>
+                    <div style={{ fontSize: 15, fontWeight: 600 }}>Central Processing Unit (CPU)</div>
                     <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>Microarchitecture &amp; Cache Hierarchy</div>
                   </div>
                 </div>
@@ -335,7 +335,7 @@ export default function HardwareDeepStudio({ setStatusBanner, formatBytes }: Pro
                 </span>
               </div>
 
-              <div style={{ fontSize: 16, fontWeight: 800, color: '#fff', marginBottom: 14 }}>
+              <div style={{ fontSize: 16, fontWeight: 600, color: '#fff', marginBottom: 14 }}>
                 {data.cpu.name}
               </div>
 
@@ -388,7 +388,7 @@ export default function HardwareDeepStudio({ setStatusBanner, formatBytes }: Pro
                     <Monitor size={18} color="#ff2a85" />
                   </div>
                   <div>
-                    <div style={{ fontSize: 15, fontWeight: 800 }}>Graphics Processing Unit (GPU)</div>
+                    <div style={{ fontSize: 15, fontWeight: 600 }}>Graphics Processing Unit (GPU)</div>
                     <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>Video Memory &amp; Display Controller</div>
                   </div>
                 </div>
@@ -407,7 +407,7 @@ export default function HardwareDeepStudio({ setStatusBanner, formatBytes }: Pro
                 </span>
               </div>
 
-              <div style={{ fontSize: 16, fontWeight: 800, color: '#fff', marginBottom: 14 }}>
+              <div style={{ fontSize: 16, fontWeight: 600, color: '#fff', marginBottom: 14 }}>
                 {data.gpu.name}
               </div>
 
@@ -450,7 +450,7 @@ export default function HardwareDeepStudio({ setStatusBanner, formatBytes }: Pro
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Zap size={18} color="#ffbe0b" />
-                  <span style={{ fontSize: 15, fontWeight: 800 }}>Physical RAM DIMM Slots</span>
+                  <span style={{ fontSize: 15, fontWeight: 600 }}>Physical RAM DIMM Slots</span>
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: '#18e299' }}>
                   {formatBytes(totalRamBytes || 17179869184)} Dual-Channel
@@ -509,7 +509,7 @@ export default function HardwareDeepStudio({ setStatusBanner, formatBytes }: Pro
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <HardDrive size={18} color="#00e5ff" />
-                  <span style={{ fontSize: 15, fontWeight: 800 }}>Physical Storage &amp; NVMe Disks</span>
+                  <span style={{ fontSize: 15, fontWeight: 600 }}>Physical Storage &amp; NVMe Disks</span>
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: '#18e299' }}>
                   S.M.A.R.T. Healthy
@@ -554,7 +554,7 @@ export default function HardwareDeepStudio({ setStatusBanner, formatBytes }: Pro
                       <span
                         style={{
                           fontSize: 13,
-                          fontWeight: 800,
+                          fontWeight: 600,
                           color: '#00e5ff'
                         }}
                       >

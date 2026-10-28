@@ -38,7 +38,9 @@ import {
   Users,
   UserCheck,
   UserX,
-  LifeBuoy
+  LifeBuoy,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 import RegistryCleaner from './components/RegistryCleaner';
@@ -48,6 +50,7 @@ import SpeedTest from './components/SpeedTest';
 import HardwareDeepStudio from './components/HardwareDeepStudio';
 import PowerUserManager from './components/PowerUserManager';
 import DataRecoveryStudio from './components/DataRecoveryStudio';
+import { NotificationPanelPopover } from './components/NotificationPanelPopover';
 
 declare global {
   interface Window {
@@ -89,6 +92,12 @@ declare global {
       applyDns: (provider: string) => Promise<any>;
       restoreDns: () => Promise<any>;
       openExternal: (url: string) => Promise<any>;
+      toggleTrayPanel?: () => Promise<any>;
+      hideTrayPanel?: () => Promise<any>;
+      openMainModule?: (module: string) => Promise<any>;
+      quitApp?: () => Promise<any>;
+      emptyRecycleBin?: () => Promise<any>;
+      onNavigateModule?: (cb: (mod: string) => void) => () => void;
       onClipboardUrlCleaned: (cb: (data: any) => void) => () => void;
       onCleanProgress?: (cb: (data: any) => void) => () => void;
     };
@@ -123,7 +132,45 @@ type ModuleId =
   | 'hardware_deep'
   | 'my_tools';
 
+
+const CLEANUP_TABS: { id: ModuleId; label: string; icon: any }[] = [
+  { id: 'system_junk', label: 'System Junk', icon: Trash2 },
+  { id: 'deep_scan', label: '13-Phase Deep Scan', icon: Sparkles },
+  { id: 'registry_cleaner', label: 'Windows Registry Cleaner', icon: Database },
+  { id: 'browser_cleanup', label: 'Browser Privacy & Cache', icon: Globe },
+];
+
+const STORAGE_TABS: { id: ModuleId; label: string; icon: any }[] = [
+  { id: 'data_recovery', label: 'Deep File Recovery', icon: LifeBuoy },
+  { id: 'space_lens', label: 'Space Lens (> 50 MB)', icon: HardDrive },
+  { id: 'app_leftovers', label: 'App Uninstaller & Leftovers', icon: Layers },
+  { id: 'shredder', label: 'DoD 5220 File Shredder', icon: Lock },
+];
+
+const SECURITY_TABS: { id: ModuleId; label: string; icon: any }[] = [
+  { id: 'network_shield', label: 'AdGuard & AI Pet Shield', icon: Shield },
+  { id: 'power_user', label: 'Power User & Accounts', icon: Users },
+];
+
+const PERFORMANCE_TABS: { id: ModuleId; label: string; icon: any }[] = [
+  { id: 'performance', label: 'RAM & Speed Booster', icon: Zap },
+  { id: 'speed_test', label: 'Real-Time Speed Test', icon: Wifi },
+  { id: 'startup_manager', label: 'Startup Boot Accelerator', icon: Rocket },
+  { id: 'activity_monitor', label: 'Real-Time Tasklist', icon: Activity },
+];
+
+const HARDWARE_TABS: { id: ModuleId; label: string; icon: any }[] = [
+  { id: 'hardware_deep', label: 'Hardware & Firmware Deep Studio', icon: Cpu },
+  { id: 'driver_updater', label: 'Driver Inspector & Updates', icon: Sliders },
+  { id: 'battery_lifeguard', label: 'Battery & Thermal HUD', icon: BatteryCharging },
+];
+
 export default function App() {
+  if (typeof window !== 'undefined' && window.location.search.includes('tray=1')) {
+    return <NotificationPanelPopover formatBytes={formatBytes} />;
+  }
+
+  const [theme, setTheme] = useState<'crystal' | 'pearl'>('crystal');
   const [activeModule, setActiveModule] = useState<ModuleId>('smart_care');
   const [isCleaning, setIsCleaning] = useState<boolean>(false);
   const [cleanProgress, setCleanProgress] = useState<{ target?: string; items?: number; freedBytes?: number }>({
@@ -135,6 +182,16 @@ export default function App() {
   const [statusBanner, setStatusBanner] = useState<string | null>(
     '8002CleanUp Pro (MacCare Windows Edition) — All 12 Pro Engines Online.'
   );
+
+  // Listen for module navigation events from System Tray Popover
+  useEffect(() => {
+    if (window.electronAPI?.onNavigateModule) {
+      const unbind = window.electronAPI.onNavigateModule((mod: any) => {
+        if (mod) setActiveModule(mod);
+      });
+      return () => unbind();
+    }
+  }, []);
 
   // System Telemetry
   const [telemetry, setTelemetry] = useState<any>({
@@ -502,7 +559,7 @@ export default function App() {
   }, [activeModule]);
 
   return (
-    <div className="aurora-app-shell">
+    <div className="aurora-app-shell" data-theme={theme}>
       {/* 3D Aurora Blobs */}
       <div className="aurora-blob b1" />
       <div className="aurora-blob b2" />
@@ -512,192 +569,134 @@ export default function App() {
       <aside className="sidebar">
         <div className="brand-header">
           <div className="brand-orb">
-            <Sparkles size={20} color="#fff" />
+            <Sparkles size={18} color="#fff" />
           </div>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: 0.3 }}>8002CleanUp Pro</div>
-            <div style={{ fontSize: 10, color: 'rgba(0,229,255,0.85)', fontWeight: 700 }}>
-              MacCare for Windows
+            <div style={{ fontSize: 13.5, fontWeight: 600, letterSpacing: -0.2 }}>8002CleanUp Pro</div>
+            <div style={{ fontSize: 9.5, color: 'var(--accent-cyan)', fontWeight: 500 }}>
+              MacCare Crystal Edition
             </div>
           </div>
         </div>
 
-        <div className="nav-scroll">
-          <div className="nav-section-label">Smart Care</div>
+        <div className="nav-compact-list">
+          {/* 1. Smart Care Dashboard */}
           <button
             className={`nav-btn ${activeModule === 'smart_care' ? 'active' : ''}`}
             onClick={() => setActiveModule('smart_care')}
           >
-            <Sparkles size={16} color="#00e5ff" />
-            Smart Care Dashboard
+            <Sparkles size={15} color="#00e5ff" />
+            <span>Smart Care</span>
+            <span className="nav-badge-count">Live</span>
           </button>
 
-          <div className="nav-section-label">Cleanup Suite</div>
+          {/* 2. System & Deep Clean (4 Tools) */}
           <button
-            className={`nav-btn ${activeModule === 'system_junk' ? 'active' : ''}`}
+            className={`nav-btn ${CLEANUP_TABS.some(t => t.id === activeModule) ? 'active' : ''}`}
             onClick={() => {
-              setCategoryFilter('System Junk');
-              setActiveModule('system_junk');
-              if (!scanResult) handleRunScan();
+              if (!CLEANUP_TABS.some(t => t.id === activeModule)) {
+                setActiveModule('system_junk');
+                if (!scanResult) handleRunScan();
+              }
             }}
           >
-            <Trash2 size={16} color="#ff2a85" />
-            System Junk
+            <Trash2 size={15} color="#ff2a85" />
+            <span>System & Deep Clean</span>
+            <span className="nav-badge-count">4</span>
           </button>
+
+          {/* 3. Storage & Recovery (4 Tools) */}
           <button
-            className={`nav-btn ${activeModule === 'browser_cleanup' ? 'active' : ''}`}
+            className={`nav-btn ${STORAGE_TABS.some(t => t.id === activeModule) ? 'active' : ''}`}
             onClick={() => {
-              setCategoryFilter('Browser Cleanup');
-              setActiveModule('browser_cleanup');
-              if (!scanResult) handleRunScan();
+              if (!STORAGE_TABS.some(t => t.id === activeModule)) {
+                setActiveModule('data_recovery');
+              }
             }}
           >
-            <Globe size={16} color="#00e5ff" />
-            Browser Privacy & Cache
-          </button>
-          <button
-            className={`nav-btn ${activeModule === 'app_leftovers' ? 'active' : ''}`}
-            onClick={() => setActiveModule('app_leftovers')}
-          >
-            <Layers size={16} color="#a66bff" />
-            App Uninstaller & Leftovers
-          </button>
-          <button
-            className={`nav-btn ${activeModule === 'data_recovery' ? 'active' : ''}`}
-            onClick={() => setActiveModule('data_recovery')}
-          >
-            <LifeBuoy size={16} color="#00e5ff" />
-            Deep File Recovery
-          </button>
-          <button
-            className={`nav-btn ${activeModule === 'registry_cleaner' ? 'active' : ''}`}
-            onClick={() => setActiveModule('registry_cleaner')}
-          >
-            <Database size={16} color="#ff2a85" />
-            Windows Registry Cleaner
-          </button>
-          <button
-            className={`nav-btn ${activeModule === 'deep_scan' ? 'active' : ''}`}
-            onClick={() => setActiveModule('deep_scan')}
-          >
-            <Sparkles size={16} color="#18e299" />
-            13-Phase Deep System Scan
-          </button>
-          <button
-            className={`nav-btn ${activeModule === 'space_lens' ? 'active' : ''}`}
-            onClick={() => setActiveModule('space_lens')}
-          >
-            <HardDrive size={16} color="#ffbe0b" />
-            Space Lens (Large Files)
-          </button>
-          <button
-            className={`nav-btn ${activeModule === 'shredder' ? 'active' : ''}`}
-            onClick={() => setActiveModule('shredder')}
-          >
-            <Lock size={16} color="#ff6b4a" />
-            DoD 5220 File Shredder
+            <LifeBuoy size={15} color="#00e5ff" />
+            <span>Storage & Recovery</span>
+            <span className="nav-badge-count">4</span>
           </button>
 
-          <div className="nav-section-label">Privacy, Security & Protection</div>
+          {/* 4. Security & Accounts (2 Tools) */}
           <button
-            className={`nav-btn ${activeModule === 'power_user' ? 'active' : ''}`}
-            onClick={() => setActiveModule('power_user')}
+            className={`nav-btn ${SECURITY_TABS.some(t => t.id === activeModule) ? 'active' : ''}`}
+            onClick={() => {
+              if (!SECURITY_TABS.some(t => t.id === activeModule)) {
+                setActiveModule('network_shield');
+              }
+            }}
           >
-            <Users size={16} color="#00e5ff" />
-            Power User &amp; Accounts
-          </button>
-          <button
-            className={`nav-btn ${activeModule === 'network_shield' ? 'active' : ''}`}
-            onClick={() => setActiveModule('network_shield')}
-          >
-            <Shield size={16} color="#18e299" />
-            AdGuard & AI Pet Shield
-          </button>
-          <button
-            className={`nav-btn ${activeModule === 'performance' ? 'active' : ''}`}
-            onClick={() => setActiveModule('performance')}
-          >
-            <Zap size={16} color="#ffbe0b" />
-            RAM & Speed Booster
-          </button>
-          <button
-            className={`nav-btn ${activeModule === 'speed_test' ? 'active' : ''}`}
-            onClick={() => setActiveModule('speed_test')}
-          >
-            <Wifi size={16} color="#00e5ff" />
-            Real-Time Speed Test
-          </button>
-          <button
-            className={`nav-btn ${activeModule === 'startup_manager' ? 'active' : ''}`}
-            onClick={() => setActiveModule('startup_manager')}
-          >
-            <Rocket size={16} color="#00e5ff" />
-            Startup Boot Accelerator
+            <Shield size={15} color="#18e299" />
+            <span>Security & Accounts</span>
+            <span className="nav-badge-count">2</span>
           </button>
 
-          <div className="nav-section-label">Hardware & Tools</div>
+          {/* 5. Speed & Performance (4 Tools) */}
           <button
-            className={`nav-btn ${activeModule === 'hardware_deep' ? 'active' : ''}`}
-            onClick={() => setActiveModule('hardware_deep')}
+            className={`nav-btn ${PERFORMANCE_TABS.some(t => t.id === activeModule) ? 'active' : ''}`}
+            onClick={() => {
+              if (!PERFORMANCE_TABS.some(t => t.id === activeModule)) {
+                setActiveModule('performance');
+              }
+            }}
           >
-            <Cpu size={16} color="#00e5ff" />
-            Hardware &amp; Firmware Studio
+            <Zap size={15} color="#ffbe0b" />
+            <span>Speed & Performance</span>
+            <span className="nav-badge-count">4</span>
           </button>
+
+          {/* 6. Hardware & Drivers (3 Tools) */}
           <button
-            className={`nav-btn ${activeModule === 'driver_updater' ? 'active' : ''}`}
-            onClick={() => setActiveModule('driver_updater')}
+            className={`nav-btn ${HARDWARE_TABS.some(t => t.id === activeModule) ? 'active' : ''}`}
+            onClick={() => {
+              if (!HARDWARE_TABS.some(t => t.id === activeModule)) {
+                setActiveModule('hardware_deep');
+              }
+            }}
           >
-            <Sliders size={16} color="#00e5ff" />
-            Driver Inspector & Updates
+            <Cpu size={15} color="#00e5ff" />
+            <span>Hardware & Drivers</span>
+            <span className="nav-badge-count">3</span>
           </button>
-          <button
-            className={`nav-btn ${activeModule === 'battery_lifeguard' ? 'active' : ''}`}
-            onClick={() => setActiveModule('battery_lifeguard')}
-          >
-            <BatteryCharging size={16} color="#18e299" />
-            Battery & Thermal HUD
-          </button>
-          <button
-            className={`nav-btn ${activeModule === 'activity_monitor' ? 'active' : ''}`}
-            onClick={() => setActiveModule('activity_monitor')}
-          >
-            <Activity size={16} color="#00e5ff" />
-            Real-Time Tasklist
-          </button>
+
+          {/* 7. All 18 Tools Hub */}
           <button
             className={`nav-btn ${activeModule === 'my_tools' ? 'active' : ''}`}
             onClick={() => setActiveModule('my_tools')}
           >
-            <Wrench size={16} color="#ff2a85" />
-            All My Tools Hub
+            <Wrench size={15} color="#a66bff" />
+            <span>All 18 Tools Hub</span>
+            <span className="nav-badge-count">18</span>
           </button>
         </div>
 
-        {/* Footer Card with Live/Dry-Run Toggle */}
+        {/* Compact Sidebar Footer */}
         <div
           style={{
-            marginTop: 10,
-            padding: 10,
-            borderRadius: 12,
-            background: 'rgba(255,255,255,0.05)',
+            marginTop: 'auto',
+            padding: '8px 10px',
+            borderRadius: 10,
+            background: 'rgba(255,255,255,0.06)',
             border: '1px solid rgba(255,255,255,0.12)'
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 8 }}>
-            <span style={{ color: 'rgba(255,255,255,0.65)' }}>v1.2.9 Pro</span>
-            <span style={{ color: '#18e299', fontWeight: 700 }}>● Live Windows Engine</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 6 }}>
+            <span style={{ color: 'var(--text-secondary)' }}>v1.3.0 Pro</span>
+            <span style={{ color: '#18e299', fontWeight: 600 }}>● Live Engine</span>
           </div>
           <button
             onClick={() => setDryRun(!dryRun)}
             style={{
               width: '100%',
-              padding: '6px 10px',
-              borderRadius: 8,
+              padding: '5px 8px',
+              borderRadius: 6,
               border: '1px solid rgba(0,229,255,0.35)',
-              background: dryRun ? 'rgba(24,226,153,0.15)' : 'rgba(139,61,255,0.28)',
+              background: dryRun ? 'rgba(24,226,153,0.15)' : 'rgba(0,229,255,0.18)',
               color: '#fff',
-              fontSize: 11,
-              fontWeight: 700,
+              fontSize: 10.5,
+              fontWeight: 600,
               cursor: 'pointer',
               display: 'flex',
               justifyContent: 'space-between',
@@ -705,13 +704,151 @@ export default function App() {
             }}
           >
             <span>{dryRun ? 'Safe Dry Run' : 'Active Live Clean'}</span>
-            <span style={{ fontSize: 9.5, opacity: 0.8 }}>Click to toggle</span>
+            <span style={{ fontSize: 9, opacity: 0.75 }}>Toggle</span>
           </button>
         </div>
       </aside>
 
       {/* MAIN VIEWPORT */}
       <main className="main-viewport">
+        {/* Top Bar with Segmented Control & Action Pills */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 10 }}>
+          {CLEANUP_TABS.some(t => t.id === activeModule) && (
+            <div className="segmented-tab-bar">
+              {CLEANUP_TABS.map(tab => {
+                const TabIcon = tab.icon;
+                const isActive = activeModule === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    className={`segmented-tab-btn ${isActive ? 'active' : ''}`}
+                    onClick={() => {
+                      if (tab.id === 'system_junk' || tab.id === 'browser_cleanup') {
+                        setCategoryFilter(tab.id === 'system_junk' ? 'System Junk' : 'Browser Cleanup');
+                      }
+                      setActiveModule(tab.id);
+                    }}
+                  >
+                    <TabIcon size={13} />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {STORAGE_TABS.some(t => t.id === activeModule) && (
+            <div className="segmented-tab-bar">
+              {STORAGE_TABS.map(tab => {
+                const TabIcon = tab.icon;
+                const isActive = activeModule === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    className={`segmented-tab-btn ${isActive ? 'active' : ''}`}
+                    onClick={() => setActiveModule(tab.id)}
+                  >
+                    <TabIcon size={13} />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {SECURITY_TABS.some(t => t.id === activeModule) && (
+            <div className="segmented-tab-bar">
+              {SECURITY_TABS.map(tab => {
+                const TabIcon = tab.icon;
+                const isActive = activeModule === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    className={`segmented-tab-btn ${isActive ? 'active' : ''}`}
+                    onClick={() => setActiveModule(tab.id)}
+                  >
+                    <TabIcon size={13} />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {PERFORMANCE_TABS.some(t => t.id === activeModule) && (
+            <div className="segmented-tab-bar">
+              {PERFORMANCE_TABS.map(tab => {
+                const TabIcon = tab.icon;
+                const isActive = activeModule === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    className={`segmented-tab-btn ${isActive ? 'active' : ''}`}
+                    onClick={() => setActiveModule(tab.id)}
+                  >
+                    <TabIcon size={13} />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {HARDWARE_TABS.some(t => t.id === activeModule) && (
+            <div className="segmented-tab-bar">
+              {HARDWARE_TABS.map(tab => {
+                const TabIcon = tab.icon;
+                const isActive = activeModule === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    className={`segmented-tab-btn ${isActive ? 'active' : ''}`}
+                    onClick={() => setActiveModule(tab.id)}
+                  >
+                    <TabIcon size={13} />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {activeModule === 'smart_care' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text-secondary)' }}>
+              <Sparkles size={14} color="#00e5ff" />
+              <span>Smart Care Unified Overview</span>
+            </div>
+          )}
+
+          {activeModule === 'my_tools' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text-secondary)' }}>
+              <Wrench size={14} color="#a66bff" />
+              <span>All 18 Utilities Quick Launcher</span>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+            <button
+              className="btn-secondary"
+              onClick={() => (window as any).electronAPI?.toggleTrayPanel && (window as any).electronAPI.toggleTrayPanel()}
+              title="Toggle PC Manager Notification Panel Popover"
+              style={{ padding: '5px 10px', fontSize: 11.5 }}
+            >
+              <Zap size={13} color="#00e5ff" />
+              <span>Notification Panel</span>
+            </button>
+
+            <button
+              className="btn-secondary"
+              onClick={() => setTheme(theme === 'crystal' ? 'pearl' : 'crystal')}
+              title="Toggle Crystal Sapphire / Pearl Light Glass Look"
+              style={{ padding: '5px 8px' }}
+            >
+              {theme === 'crystal' ? <Sun size={13} color="#ffbe0b" /> : <Moon size={13} color="#00e5ff" />}
+            </button>
+          </div>
+        </div>
+
         {/* Top Status Bar */}
         {statusBanner && (
           <div
@@ -746,7 +883,7 @@ export default function App() {
             {/* Header with Title and Quick Buttons */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.4px' }}>Smart Care — Windows 10 & 11</h1>
+                <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: '-0.4px' }}>Smart Care — Windows 10 & 11</h1>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 3 }}>
                   {telemetry.platform} • {telemetry.cpuModel} ({telemetry.cpuCores} Cores) • Host: {telemetry.hostname}
                 </p>
@@ -774,7 +911,7 @@ export default function App() {
                   <Trash2 size={24} color="#ff2a85" />
                   <span className="metric-pill">System Junk</span>
                 </div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: '#ff2a85', marginTop: 12 }}>
+                <div style={{ fontSize: 20, fontWeight: 600, color: '#ff2a85', marginTop: 12 }}>
                   {scanResult ? formatBytes(scanResult.totalBytes) : 'Ready to Scan'}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
@@ -787,7 +924,7 @@ export default function App() {
                   <Shield size={24} color="#18e299" />
                   <span className="metric-pill" style={{ color: '#18e299' }}>Shield Active</span>
                 </div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: '#18e299', marginTop: 12 }}>
+                <div style={{ fontSize: 20, fontWeight: 600, color: '#18e299', marginTop: 12 }}>
                   {adsBlocked + trackersBlocked} Blocked
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
@@ -800,7 +937,7 @@ export default function App() {
                   <Cpu size={24} color="#00e5ff" />
                   <span className="metric-pill">Live WMI</span>
                 </div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: '#00e5ff', marginTop: 12 }}>
+                <div style={{ fontSize: 20, fontWeight: 600, color: '#00e5ff', marginTop: 12 }}>
                   {formatBytes(telemetry.ramUsedBytes)} Used
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
@@ -815,7 +952,7 @@ export default function App() {
                     {telemetry.battery.isCharging ? 'AC Power' : 'Battery'}
                   </span>
                 </div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: '#ffbe0b', marginTop: 12 }}>
+                <div style={{ fontSize: 20, fontWeight: 600, color: '#ffbe0b', marginTop: 12 }}>
                   {telemetry.battery.percent}% • {telemetry.battery.temperatureC}°C
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
@@ -828,7 +965,7 @@ export default function App() {
                   <Wrench size={24} color="#a66bff" />
                   <span className="metric-pill">Storage</span>
                 </div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: '#a66bff', marginTop: 12 }}>
+                <div style={{ fontSize: 20, fontWeight: 600, color: '#a66bff', marginTop: 12 }}>
                   {formatBytes(telemetry.diskFreeBytes)} Free
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
@@ -854,7 +991,7 @@ export default function App() {
               <div style={{ flex: 1, minWidth: 280 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
                   <Zap size={20} color="#00e5ff" />
-                  <span style={{ fontSize: 15, fontWeight: 800 }}>Physical RAM Real-Time Monitor</span>
+                  <span style={{ fontSize: 15, fontWeight: 600 }}>Physical RAM Real-Time Monitor</span>
                   <span className="metric-pill" style={{ color: '#18e299', borderColor: 'rgba(24,226,153,0.4)' }}>
                     Live WMI Monitor
                   </span>
@@ -888,7 +1025,7 @@ export default function App() {
                   style={{
                     padding: '11px 22px',
                     fontSize: 14,
-                    fontWeight: 800,
+                    fontWeight: 600,
                     background: 'linear-gradient(135deg, #00e5ff, #8b3dff)',
                     boxShadow: '0 0 18px rgba(0, 229, 255, 0.45)'
                   }}
@@ -916,7 +1053,7 @@ export default function App() {
                   <Database size={20} color="#ff2a85" />
                   <span className="metric-pill" style={{ color: '#ff2a85', borderColor: 'rgba(255,42,133,0.3)' }}>New Engine</span>
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', marginTop: 8 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginTop: 8 }}>
                   Registry Cleaner
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -933,7 +1070,7 @@ export default function App() {
                   <Sliders size={20} color="#00e5ff" />
                   <span className="metric-pill" style={{ color: '#00e5ff', borderColor: 'rgba(0,229,255,0.3)' }}>PnP Hardware</span>
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', marginTop: 8 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginTop: 8 }}>
                   Driver Inspector &amp; Updates
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -950,7 +1087,7 @@ export default function App() {
                   <Sparkles size={20} color="#18e299" />
                   <span className="metric-pill" style={{ color: '#18e299', borderColor: 'rgba(24,226,153,0.3)' }}>13 Phases</span>
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', marginTop: 8 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginTop: 8 }}>
                   13-Phase Deep Scan
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -967,7 +1104,7 @@ export default function App() {
                   <Wifi size={20} color="#ffbe0b" />
                   <span className="metric-pill" style={{ color: '#ffbe0b', borderColor: 'rgba(255,190,11,0.3)' }}>Live CDN</span>
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', marginTop: 8 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginTop: 8 }}>
                   Real-Time Speed Test
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -984,7 +1121,7 @@ export default function App() {
                   <Cpu size={20} color="#00e5ff" />
                   <span className="metric-pill" style={{ color: '#00e5ff', borderColor: 'rgba(0,229,255,0.3)' }}>Hardware Lab</span>
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', marginTop: 8 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginTop: 8 }}>
                   Hardware &amp; Firmware Deep Studio
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -1001,7 +1138,7 @@ export default function App() {
                   <Users size={20} color="#ffbe0b" />
                   <span className="metric-pill" style={{ color: '#ffbe0b', borderColor: 'rgba(255,190,11,0.3)' }}>Security Control</span>
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', marginTop: 8 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginTop: 8 }}>
                   Power User &amp; Accounts
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -1018,7 +1155,7 @@ export default function App() {
                   <LifeBuoy size={20} color="#00e5ff" />
                   <span className="metric-pill" style={{ color: '#00e5ff', borderColor: 'rgba(0,229,255,0.3)' }}>Forensic Carving</span>
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', marginTop: 8 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginTop: 8 }}>
                   Deep File Recovery
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -1031,7 +1168,7 @@ export default function App() {
             {isCleaning && (
               <div className="clean-progress-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontWeight: 800, color: '#18e299', fontSize: 14 }}>
+                  <div style={{ fontWeight: 600, color: '#18e299', fontSize: 14 }}>
                     Purging System Junk & Standby Residuals…
                   </div>
                   <div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#00e5ff', fontSize: 13 }}>
@@ -1061,7 +1198,7 @@ export default function App() {
                   <span>{isCleaning ? 'CLEANING' : isScanning ? 'SCANNING' : 'SCAN'}</span>
                 </button>
                 <div>
-                  <div style={{ fontSize: 16, fontWeight: 800 }}>
+                  <div style={{ fontSize: 16, fontWeight: 600 }}>
                     {isCleaning
                       ? 'Deleting safe junk files without freezing system...'
                       : isScanning
@@ -1134,7 +1271,7 @@ export default function App() {
                   <div className="glass-card" style={{ padding: 18 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                       <span style={{ fontSize: 13, fontWeight: 700 }}>Physical Working Set RAM</span>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: '#00e5ff' }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: '#00e5ff' }}>
                         {formatBytes(telemetry.ramUsedBytes)} / {formatBytes(telemetry.ramTotalBytes)}
                       </span>
                     </div>
@@ -1157,7 +1294,7 @@ export default function App() {
                   <div className="glass-card" style={{ padding: 18 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                       <span style={{ fontSize: 13, fontWeight: 700 }}>Windows System Drive (C:)</span>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: '#a66bff' }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: '#a66bff' }}>
                         {formatBytes(telemetry.diskFreeBytes)} Free
                       </span>
                     </div>
@@ -1182,7 +1319,7 @@ export default function App() {
                 <div className="glass-card" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                     <div>
-                      <div style={{ fontSize: 15, fontWeight: 800 }}>
+                      <div style={{ fontSize: 15, fontWeight: 600 }}>
                         {scanResult
                           ? `Inspection Results: ${formatBytes(scanResult.totalBytes)} Detected Across ${scanResult.itemCount} Targets`
                           : 'Smart Care Target Categories (Windows 10 & 11)'}
@@ -1261,7 +1398,7 @@ export default function App() {
                             <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, background: 'rgba(24, 226, 153, 0.15)', color: '#18e299', fontWeight: 600 }}>
                               {item.safety}
                             </span>
-                            <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#00e5ff', fontSize: 13 }}>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#00e5ff', fontSize: 13 }}>
                               {formatBytes(item.sizeBytes)}
                             </span>
                           </div>
@@ -1282,7 +1419,7 @@ export default function App() {
           <div className="workspace-container">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h1 style={{ fontSize: 24, fontWeight: 800 }}>
+                <h1 style={{ fontSize: 24, fontWeight: 600 }}>
                   {activeModule === 'system_junk' ? 'Windows System Junk Cleaner' : 'Browser Privacy & Cache Cleaner'}
                 </h1>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
@@ -1305,7 +1442,7 @@ export default function App() {
             {isCleaning && (
               <div className="clean-progress-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontWeight: 800, color: '#18e299', fontSize: 14 }}>
+                  <div style={{ fontWeight: 600, color: '#18e299', fontSize: 14 }}>
                     Purging Selected Files Asynchronously…
                   </div>
                   <div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#00e5ff', fontSize: 13 }}>
@@ -1371,7 +1508,7 @@ export default function App() {
                           <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, background: 'rgba(24, 226, 153, 0.15)', color: '#18e299', fontWeight: 600 }}>
                             {item.safety}
                           </span>
-                          <span style={{ fontWeight: 800, color: '#00e5ff', fontFamily: 'monospace', fontSize: 14 }}>
+                          <span style={{ fontWeight: 600, color: '#00e5ff', fontFamily: 'monospace', fontSize: 14 }}>
                             {formatBytes(item.sizeBytes)}
                           </span>
                         </div>
@@ -1391,7 +1528,7 @@ export default function App() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <h1 style={{ fontSize: 24, fontWeight: 800 }}>Windows App Uninstaller &amp; Leftovers</h1>
+                  <h1 style={{ fontSize: 24, fontWeight: 600 }}>Windows App Uninstaller &amp; Leftovers</h1>
                   <span
                     style={{
                       fontSize: 11,
@@ -1429,19 +1566,19 @@ export default function App() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
               <div className="glass-card" style={{ padding: '14px 18px' }}>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Installed Programs</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: '#a66bff', marginTop: 4 }}>
+                <div style={{ fontSize: 24, fontWeight: 600, color: '#a66bff', marginTop: 4 }}>
                   {installedApps.length} Applications
                 </div>
               </div>
               <div className="glass-card" style={{ padding: '14px 18px' }}>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Estimated Disk Occupancy</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: '#00e5ff', marginTop: 4 }}>
+                <div style={{ fontSize: 24, fontWeight: 600, color: '#00e5ff', marginTop: 4 }}>
                   {formatBytes(installedApps.reduce((acc, a) => acc + (a.sizeBytes || 0), 0))}
                 </div>
               </div>
               <div className="glass-card" style={{ padding: '14px 18px' }}>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Cleanable Leftovers Potential</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: '#ff2a85', marginTop: 4 }}>
+                <div style={{ fontSize: 24, fontWeight: 600, color: '#ff2a85', marginTop: 4 }}>
                   ~{formatBytes(installedApps.reduce((acc, a) => acc + (a.leftovers || 0), 0))}
                 </div>
               </div>
@@ -1459,7 +1596,7 @@ export default function App() {
               ) : installedApps.length === 0 ? (
                 <div style={{ padding: 60, textAlign: 'center' }}>
                   <CheckCircle2 size={42} color="#18e299" style={{ margin: '0 auto 12px' }} />
-                  <div style={{ fontSize: 16, fontWeight: 800 }}>Click Refresh Apps to Load Installed Programs</div>
+                  <div style={{ fontSize: 16, fontWeight: 600 }}>Click Refresh Apps to Load Installed Programs</div>
                 </div>
               ) : (
                 <div className="scroll-table-container">
@@ -1521,7 +1658,7 @@ export default function App() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
               <div>
-                <h1 style={{ fontSize: 24, fontWeight: 800 }}>Space Lens — Large & Old Files Finder</h1>
+                <h1 style={{ fontSize: 24, fontWeight: 600 }}>Space Lens — Large & Old Files Finder</h1>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                   Scans Downloads, Documents, Videos, and Desktop for files over 50 MB.
                 </p>
@@ -1585,7 +1722,7 @@ export default function App() {
                           </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ fontSize: 13, fontWeight: 800, color: '#00e5ff', fontFamily: 'monospace' }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: '#00e5ff', fontFamily: 'monospace' }}>
                             {formatBytes(file.sizeBytes)}
                           </span>
                           <button
@@ -1622,7 +1759,7 @@ export default function App() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
               <div>
-                <h1 style={{ fontSize: 24, fontWeight: 800 }}>DoD 5220.22-M 3-Pass File Shredder</h1>
+                <h1 style={{ fontSize: 24, fontWeight: 600 }}>DoD 5220.22-M 3-Pass File Shredder</h1>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                   Permanently obliterates sensitive files using military-grade zero, ones, and cryptographic random passes.
                 </p>
@@ -1631,7 +1768,7 @@ export default function App() {
 
             <div className="glass-card" style={{ textAlign: 'center', padding: 40 }}>
               <Lock size={48} color="#ff6b4a" style={{ marginBottom: 16 }} />
-              <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 8 }}>Permanent Forensic Erase</h2>
+              <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Permanent Forensic Erase</h2>
               <p style={{ fontSize: 13, color: 'var(--text-secondary)', maxWidth: 500, margin: '0 auto 20px' }}>
                 Files deleted with this tool cannot be recovered by any file-recovery software (Recuva, EaseUS, forensics).
               </p>
@@ -1651,14 +1788,14 @@ export default function App() {
                   <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontFamily: 'monospace', marginTop: 4 }}>
                     {shredFilePath}
                   </div>
-                  <div style={{ fontSize: 12, color: '#00e5ff', fontWeight: 800, marginTop: 6 }}>
+                  <div style={{ fontSize: 12, color: '#00e5ff', fontWeight: 600, marginTop: 6 }}>
                     Size: {formatBytes(shredFileSize)}
                   </div>
                 </div>
               ) : null}
 
               {isShredding && (
-                <div style={{ color: '#ffbe0b', fontWeight: 800, fontSize: 14, marginBottom: 16 }}>
+                <div style={{ color: '#ffbe0b', fontWeight: 600, fontSize: 14, marginBottom: 16 }}>
                   {shredStep}
                 </div>
               )}
@@ -1713,7 +1850,7 @@ export default function App() {
                     <Bot size={24} color="#fff" />
                   </div>
                   <div>
-                    <div style={{ fontSize: 16, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
                       Nova AI Cyber Guardian Pet
                       <span
                         style={{
@@ -1794,7 +1931,7 @@ export default function App() {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <div style={{ fontSize: 15, fontWeight: 800 }}>{scamReport.domain}</div>
+                      <div style={{ fontSize: 15, fontWeight: 600 }}>{scamReport.domain}</div>
                       <div
                         style={{
                           fontSize: 12,
@@ -1813,7 +1950,7 @@ export default function App() {
                     <div
                       style={{
                         fontSize: 28,
-                        fontWeight: 900,
+                        fontWeight: 600,
                         color:
                           scamReport.trustScore >= 80
                             ? '#18e299'
@@ -2034,7 +2171,7 @@ export default function App() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
               <div>
-                <h1 style={{ fontSize: 24, fontWeight: 800 }}>RAM & Speed Booster — Performance Suite</h1>
+                <h1 style={{ fontSize: 24, fontWeight: 600 }}>RAM & Speed Booster — Performance Suite</h1>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                   Reclaim unreferenced working-set physical RAM, flush resolver caches, and activate Game Turbo.
                 </p>
@@ -2061,7 +2198,7 @@ export default function App() {
               <div className="glass-card" style={{ padding: 20 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <div style={{ fontSize: 14, fontWeight: 700 }}>Physical RAM Status</div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: '#00e5ff' }}>
+                  <div style={{ fontSize: 18, fontWeight: 600, color: '#00e5ff' }}>
                     {formatBytes(telemetry.ramUsedBytes)} / {formatBytes(telemetry.ramTotalBytes)}
                   </div>
                 </div>
@@ -2111,7 +2248,7 @@ export default function App() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
               <div>
-                <h1 style={{ fontSize: 24, fontWeight: 800 }}>Startup Boot Accelerator</h1>
+                <h1 style={{ fontSize: 24, fontWeight: 600 }}>Startup Boot Accelerator</h1>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                   Manage programs configured to launch on Windows boot to speed up startup time.
                 </p>
@@ -2178,7 +2315,7 @@ export default function App() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
               <div>
-                <h1 style={{ fontSize: 24, fontWeight: 800 }}>Battery Lifeguard &amp; Thermal HUD</h1>
+                <h1 style={{ fontSize: 24, fontWeight: 600 }}>Battery Lifeguard &amp; Thermal HUD</h1>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                   Hardware metrics queried directly via Windows Management Instrumentation (WMI).
                 </p>
@@ -2198,7 +2335,7 @@ export default function App() {
             >
               <div className="glass-card" style={{ padding: 22 }}>
                 <BatteryCharging size={32} color="#18e299" />
-                <div style={{ fontSize: 28, fontWeight: 800, marginTop: 10, color: '#18e299' }}>
+                <div style={{ fontSize: 28, fontWeight: 600, marginTop: 10, color: '#18e299' }}>
                   {telemetry.battery.percent}%
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 700, marginTop: 4 }}>
@@ -2211,7 +2348,7 @@ export default function App() {
 
               <div className="glass-card" style={{ padding: 22 }}>
                 <Flame size={32} color="#ff6b4a" />
-                <div style={{ fontSize: 28, fontWeight: 800, marginTop: 10, color: '#ff6b4a' }}>
+                <div style={{ fontSize: 28, fontWeight: 600, marginTop: 10, color: '#ff6b4a' }}>
                   {telemetry.battery.temperatureC}°C
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 700, marginTop: 4 }}>MSAcpi Thermal Zone</div>
@@ -2222,7 +2359,7 @@ export default function App() {
 
               <div className="glass-card" style={{ padding: 22 }}>
                 <Cpu size={32} color="#00e5ff" />
-                <div style={{ fontSize: 28, fontWeight: 800, marginTop: 10, color: '#00e5ff' }}>
+                <div style={{ fontSize: 28, fontWeight: 600, marginTop: 10, color: '#00e5ff' }}>
                   {telemetry.cpuPercent}%
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 700, marginTop: 4 }}>CPU Load Average</div>
@@ -2241,7 +2378,7 @@ export default function App() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
               <div>
-                <h1 style={{ fontSize: 24, fontWeight: 800 }}>Real-Time Activity Monitor &amp; Taskkill</h1>
+                <h1 style={{ fontSize: 24, fontWeight: 600 }}>Real-Time Activity Monitor &amp; Taskkill</h1>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                   Active Windows processes with real-time CPU &amp; RAM consumption and one-click termination.
                 </p>
@@ -2308,7 +2445,7 @@ export default function App() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
               <div>
-                <h1 style={{ fontSize: 24, fontWeight: 800 }}>My Tools Hub — 18 Pro Utilities</h1>
+                <h1 style={{ fontSize: 24, fontWeight: 600 }}>My Tools Hub — 18 Pro Utilities</h1>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                   All MacCare Pro features natively ported to Windows 10 & 11 with 100% genuine system engines.
                 </p>
@@ -2344,7 +2481,7 @@ export default function App() {
                 ['Battery Lifeguard', 'WMI charging status and real Celsius temperature', () => setActiveModule('battery_lifeguard')]
               ].map(([title, desc, action]: any, i) => (
                 <div key={i} className="glass-card interactive" onClick={action}>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: '#00e5ff' }}>{title}</div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: '#00e5ff' }}>{title}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 6 }}>{desc}</div>
                 </div>
               ))}
@@ -2407,7 +2544,7 @@ export default function App() {
         <div className="modal-backdrop" onClick={() => setShowAiSetupModal(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div style={{ fontSize: 17, fontWeight: 800 }}>
+              <div style={{ fontSize: 17, fontWeight: 600 }}>
                 Nova AI Cyber Guardian — Free API Key Setup Wizard
               </div>
               <button
@@ -2495,7 +2632,7 @@ export default function App() {
         <div className="modal-backdrop" onClick={() => setShowAppsModal(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div style={{ fontSize: 16, fontWeight: 800 }}>Add Application to AdGuard Filter</div>
+              <div style={{ fontSize: 16, fontWeight: 600 }}>Add Application to AdGuard Filter</div>
               <button
                 onClick={() => setShowAppsModal(false)}
                 style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer' }}

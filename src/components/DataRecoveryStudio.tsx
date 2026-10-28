@@ -174,7 +174,7 @@ export default function DataRecoveryStudio({ setStatusBanner, formatBytes }: Pro
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 800 }}>Deep Forensic File Recovery Studio</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 600 }}>Deep Forensic File Recovery Studio</h1>
             <span
               style={{
                 fontSize: 11,
@@ -257,7 +257,7 @@ export default function DataRecoveryStudio({ setStatusBanner, formatBytes }: Pro
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <ShieldCheck size={28} color={testResult.success ? '#18e299' : '#ff2a85'} />
             <div>
-              <div style={{ fontSize: 14.5, fontWeight: 800, color: '#fff' }}>
+              <div style={{ fontSize: 14.5, fontWeight: 600, color: '#fff' }}>
                 {testResult.success
                   ? '✓ Live Recovery Self-Test Passed! 100% Binary Integrity Verified'
                   : 'Self-Test Notice'}
@@ -286,28 +286,28 @@ export default function DataRecoveryStudio({ setStatusBanner, formatBytes }: Pro
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
         <div className="glass-card" style={{ padding: '14px 18px' }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Recoverable Deleted Files</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#00e5ff', marginTop: 4 }}>
+          <div style={{ fontSize: 24, fontWeight: 600, color: '#00e5ff', marginTop: 4 }}>
             {files.length} Files
           </div>
         </div>
 
         <div className="glass-card" style={{ padding: '14px 18px' }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Total Data Volume</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#ff2a85', marginTop: 4 }}>
+          <div style={{ fontSize: 24, fontWeight: 600, color: '#ff2a85', marginTop: 4 }}>
             {formatBytes(totalBytesRecoverable)}
           </div>
         </div>
 
         <div className="glass-card" style={{ padding: '14px 18px' }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Raw Sector Integrity</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#18e299', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ fontSize: 24, fontWeight: 600, color: '#18e299', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
             <ShieldCheck size={22} color="#18e299" /> 100% Intact
           </div>
         </div>
 
         <div className="glass-card" style={{ padding: '14px 18px' }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Selected for Recovery</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#ffbe0b', marginTop: 4 }}>
+          <div style={{ fontSize: 24, fontWeight: 600, color: '#ffbe0b', marginTop: 4 }}>
             {selectedCount} Files
           </div>
         </div>
@@ -372,7 +372,7 @@ export default function DataRecoveryStudio({ setStatusBanner, formatBytes }: Pro
         ) : filteredFiles.length === 0 ? (
           <div style={{ padding: 60, textAlign: 'center' }}>
             <CheckCircle2 size={42} color="#18e299" style={{ margin: '0 auto 12px' }} />
-            <div style={{ fontSize: 16, fontWeight: 800 }}>No deleted files match this filter</div>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>No deleted files match this filter</div>
             <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginTop: 4 }}>
               Click "Run Live Recovery Self-Test" to test the engine with a real probe file.
             </div>
@@ -445,7 +445,7 @@ export default function DataRecoveryStudio({ setStatusBanner, formatBytes }: Pro
                 </div>
 
                 <div style={{ textAlign: 'right', marginRight: 8 }}>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: '#00e5ff' }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#00e5ff' }}>
                     {formatBytes(file.sizeBytes)}
                   </div>
                   <div style={{ fontSize: 11, color: '#18e299', fontWeight: 600 }}>

@@ -40,6 +40,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   applyDns: (provider) => ipcRenderer.invoke('apply-dns', { provider }),
   restoreDns: () => ipcRenderer.invoke('restore-dns'),
   openExternal: (url) => ipcRenderer.invoke('open-external', { url }),
+  toggleTrayPanel: () => ipcRenderer.invoke('toggle-tray-panel'),
+  hideTrayPanel: () => ipcRenderer.invoke('hide-tray-panel'),
+  openMainModule: (module) => ipcRenderer.invoke('open-main-module', { module }),
+  quitApp: () => ipcRenderer.invoke('quit-app'),
+  emptyRecycleBin: () => ipcRenderer.invoke('empty-recycle-bin'),
+  onNavigateModule: (callback) => {
+    const listener = (_event, mod) => callback(mod);
+    ipcRenderer.on('navigate-module', listener);
+    return () => ipcRenderer.removeListener('navigate-module', listener);
+  },
   onClipboardUrlCleaned: (callback) => {
     const listener = (_event, data) => callback(data);
     ipcRenderer.on('clipboard-url-cleaned', listener);

@@ -103,7 +103,7 @@ export default function RegistryCleaner({ setStatusBanner }: Props) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 800 }}>Windows Registry Cleaner &amp; Optimizer</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 600 }}>Windows Registry Cleaner &amp; Optimizer</h1>
             <span
               style={{
                 fontSize: 11,
@@ -147,21 +147,21 @@ export default function RegistryCleaner({ setStatusBanner }: Props) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
         <div className="glass-card" style={{ padding: '14px 18px' }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Total Orphaned Keys Found</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: issues.length > 0 ? '#ff2a85' : '#18e299', marginTop: 4 }}>
+          <div style={{ fontSize: 24, fontWeight: 600, color: issues.length > 0 ? '#ff2a85' : '#18e299', marginTop: 4 }}>
             {issues.length} {issues.length === 0 && !loading ? 'Clean' : 'Issues'}
           </div>
         </div>
 
         <div className="glass-card" style={{ padding: '14px 18px' }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Selected for Removal</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#00e5ff', marginTop: 4 }}>
+          <div style={{ fontSize: 24, fontWeight: 600, color: '#00e5ff', marginTop: 4 }}>
             {selectedCount} Keys
           </div>
         </div>
 
         <div className="glass-card" style={{ padding: '14px 18px' }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Safety Rating</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#18e299', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ fontSize: 24, fontWeight: 600, color: '#18e299', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
             <ShieldCheck size={22} color="#18e299" /> 100% Safe
           </div>
         </div>
@@ -169,7 +169,7 @@ export default function RegistryCleaner({ setStatusBanner }: Props) {
         {cleanedCount !== null && (
           <div className="glass-card" style={{ padding: '14px 18px', background: 'rgba(24,226,153,0.12)', border: '1px solid #18e299' }}>
             <div style={{ fontSize: 12, color: '#18e299', fontWeight: 700 }}>Recently Repaired</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: '#fff', marginTop: 4 }}>
+            <div style={{ fontSize: 24, fontWeight: 600, color: '#fff', marginTop: 4 }}>
               +{cleanedCount} Keys Cleared
             </div>
           </div>
@@ -237,7 +237,7 @@ export default function RegistryCleaner({ setStatusBanner }: Props) {
         ) : filteredIssues.length === 0 ? (
           <div style={{ padding: 60, textAlign: 'center' }}>
             <CheckCircle2 size={42} color="#18e299" style={{ margin: '0 auto 12px' }} />
-            <div style={{ fontSize: 16, fontWeight: 800 }}>Windows Registry is Clean!</div>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>Windows Registry is Clean!</div>
             <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginTop: 4 }}>
               {issues.length === 0
                 ? 'No orphaned references or obsolete MUI cache items detected on your system.'

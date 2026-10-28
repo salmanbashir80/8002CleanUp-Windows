@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, clipboard } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, clipboard, Tray, Menu, nativeImage, Notification, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -7,8 +7,32 @@ const https = require('https');
 const crypto = require('crypto');
 const { exec } = require('child_process');
 
+app.setAppUserModelId('com.salman.8002cleanup.windows');
+
 let mainWindow = null;
+let trayWindow = null;
+let appTray = null;
+let isQuitting = false;
+let hasShownTrayNotice = false;
 let lastClipboardText = '';
+
+function getAppIconPath() {
+  const icoPath = path.join(__dirname, '../build/icon.ico');
+  const pngPath = path.join(__dirname, '../build/icon.png');
+  if (process.platform === 'win32' && fs.existsSync(icoPath)) return icoPath;
+  if (fs.existsSync(pngPath)) return pngPath;
+  return undefined;
+}
+
+function getAppIconImage() {
+  const p = getAppIconPath();
+  if (!p) return undefined;
+  try {
+    return nativeImage.createFromPath(p);
+  } catch (_e) {
+    return undefined;
+  }
+}
 
 function execAsync(cmd, timeout = 5000) {
   return new Promise((resolve) => {
@@ -47,13 +71,15 @@ function cleanTrackingURLString(rawInput) {
 }
 
 function createWindow() {
+  const iconImg = getAppIconImage();
   mainWindow = new BrowserWindow({
-    width: 1320,
+    width: 1360,
     height: 860,
-    minWidth: 1024,
+    minWidth: 1080,
     minHeight: 700,
     title: '8002CleanUp Pro — Windows 10 & 11 Edition',
-    backgroundColor: '#120924',
+    backgroundColor: '#0e1b38',
+    icon: iconImg || getAppIconPath(),
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     autoHideMenuBar: true,
     webPreferences: {
@@ -63,12 +89,151 @@ function createWindow() {
     }
   });
 
+  if (iconImg && process.platform === 'win32') {
+    try { mainWindow.setIcon(iconImg); } catch (_e) {}
+  }
+
   const devUrl = process.env.VITE_DEV_SERVER_URL;
   if (devUrl) {
     mainWindow.loadURL(devUrl);
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
+
+  // Keep running in background when closed (PC Manager / macOS MenuBar behavior)
+  mainWindow.on('close', (e) => {
+    if (!isQuitting) {
+      e.preventDefault();
+      mainWindow.hide();
+      if (!hasShownTrayNotice && Notification.isSupported()) {
+        hasShownTrayNotice = true;
+        try {
+          new Notification({
+            title: '8002CleanUp Pro — Active in Background',
+            body: 'Running in system tray. Click the 8002CleanUp tray icon for Instant RAM Boost & Live System HUD.',
+            icon: getAppIconPath()
+          }).show();
+        } catch (_err) {}
+      }
+    }
+  });
+}
+
+function createTrayWindow() {
+  const iconImg = getAppIconImage();
+  trayWindow = new BrowserWindow({
+    width: 384,
+    height: 618,
+    show: false,
+    frame: false,
+    resizable: false,
+    fullscreenable: false,
+    maximizable: false,
+    minimizable: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    transparent: false,
+    backgroundColor: '#0f1f42',
+    icon: iconImg || getAppIconPath(),
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  const devUrl = process.env.VITE_DEV_SERVER_URL;
+  if (devUrl) {
+    trayWindow.loadURL(`${devUrl}?tray=1`);
+  } else {
+    trayWindow.loadFile(path.join(__dirname, '../dist/index.html'), { search: 'tray=1' });
+  }
+
+  trayWindow.on('blur', () => {
+    if (trayWindow && !trayWindow.isDestroyed() && trayWindow.isVisible()) {
+      trayWindow.hide();
+    }
+  });
+}
+
+function positionAndShowTrayWindow(trayBounds) {
+  if (!trayWindow || trayWindow.isDestroyed()) {
+    createTrayWindow();
+  }
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const workArea = primaryDisplay.workArea;
+  const winBounds = trayWindow.getBounds();
+
+  let x = workArea.x + workArea.width - winBounds.width - 12;
+  let y = workArea.y + workArea.height - winBounds.height - 10;
+
+  if (trayBounds && trayBounds.x > 0 && trayBounds.y > 0) {
+    x = Math.min(
+      Math.max(workArea.x + 8, Math.round(trayBounds.x - winBounds.width / 2 + trayBounds.width / 2)),
+      workArea.x + workArea.width - winBounds.width - 10
+    );
+    if (trayBounds.y > workArea.height / 2) {
+      y = Math.max(workArea.y + 8, trayBounds.y - winBounds.height - 8);
+    } else {
+      y = trayBounds.y + trayBounds.height + 8;
+    }
+  }
+
+  trayWindow.setPosition(x, y, false);
+  trayWindow.show();
+  trayWindow.focus();
+}
+
+function createSystemTray() {
+  const iconImg = getAppIconImage();
+  if (!iconImg) return;
+  try {
+    appTray = new Tray(iconImg);
+    appTray.setToolTip('8002CleanUp Pro — Live RAM & System Notification Panel');
+
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: 'Open Notification Panel (RAM & System HUD)',
+        click: () => positionAndShowTrayWindow()
+      },
+      {
+        label: 'Open 8002CleanUp Pro Dashboard',
+        click: () => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.show();
+            mainWindow.focus();
+          }
+        }
+      },
+      { type: 'separator' },
+      {
+        label: 'Quit 8002CleanUp Pro Completely',
+        click: () => {
+          isQuitting = true;
+          app.quit();
+        }
+      }
+    ]);
+
+    appTray.on('click', (_event, bounds) => {
+      if (trayWindow && !trayWindow.isDestroyed() && trayWindow.isVisible()) {
+        trayWindow.hide();
+      } else {
+        positionAndShowTrayWindow(bounds);
+      }
+    });
+
+    appTray.on('double-click', () => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.show();
+        mainWindow.focus();
+      }
+    });
+
+    appTray.on('right-click', () => {
+      appTray.popUpContextMenu(contextMenu);
+    });
+  } catch (_e) {}
 }
 
 // Background Clipboard URL Tracking Stripper
@@ -91,13 +256,34 @@ function startClipboardMonitor() {
   }, 1400);
 }
 
-app.whenReady().then(() => {
-  createWindow();
-  startClipboardMonitor();
+const gotSingleLock = app.requestSingleInstanceLock();
+if (!gotSingleLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+
+  app.whenReady().then(() => {
+    createWindow();
+    createTrayWindow();
+    createSystemTray();
+    startClipboardMonitor();
+  });
+}
+
+app.on('before-quit', () => {
+  isQuitting = true;
 });
 
 app.on('window-all-closed', () => {
-  app.quit();
+  if (isQuitting) {
+    app.quit();
+  }
 });
 
 // Helper: Calculate directory size safely (accurate recursive walk)
@@ -1806,4 +1992,50 @@ ipcMain.handle('show-item-in-folder', async (_event, { fullPath }) => {
     shell.showItemInFolder(fullPath);
   }
   return { ok: true };
+});
+
+
+// Tray & Notification Panel Popover Controls (PC Manager + macOS MenuBarExtra)
+ipcMain.handle('toggle-tray-panel', async () => {
+  if (trayWindow && !trayWindow.isDestroyed() && trayWindow.isVisible()) {
+    trayWindow.hide();
+    return { visible: false };
+  }
+  positionAndShowTrayWindow();
+  return { visible: true };
+});
+
+ipcMain.handle('hide-tray-panel', async () => {
+  if (trayWindow && !trayWindow.isDestroyed()) {
+    trayWindow.hide();
+  }
+  return { ok: true };
+});
+
+ipcMain.handle('open-main-module', async (_event, { module }) => {
+  if (trayWindow && !trayWindow.isDestroyed()) {
+    trayWindow.hide();
+  }
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+    if (module) {
+      mainWindow.webContents.send('navigate-module', module);
+    }
+  }
+  return { ok: true };
+});
+
+ipcMain.handle('quit-app', async () => {
+  isQuitting = true;
+  app.quit();
+  return { ok: true };
+});
+
+ipcMain.handle('empty-recycle-bin', async () => {
+  if (process.platform === 'win32') {
+    await execAsync('powershell -NoProfile -Command "Clear-RecycleBin -Force -ErrorAction SilentlyContinue"', 8000);
+  }
+  return { success: true, message: 'Windows Recycle Bin emptied.' };
 });

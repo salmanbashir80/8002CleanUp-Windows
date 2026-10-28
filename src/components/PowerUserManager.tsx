@@ -147,7 +147,7 @@ export default function PowerUserManager({ setStatusBanner }: Props) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 800 }}>Power User &amp; Account Security Manager</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 600 }}>Power User &amp; Account Security Manager</h1>
             <span
               style={{
                 fontSize: 11,
@@ -198,28 +198,28 @@ export default function PowerUserManager({ setStatusBanner }: Props) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
         <div className="glass-card" style={{ padding: '14px 18px' }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Total System Accounts</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#00e5ff', marginTop: 4 }}>
+          <div style={{ fontSize: 24, fontWeight: 600, color: '#00e5ff', marginTop: 4 }}>
             {totalUsers} Accounts
           </div>
         </div>
 
         <div className="glass-card" style={{ padding: '14px 18px' }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Active / Enabled Users</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#18e299', marginTop: 4 }}>
+          <div style={{ fontSize: 24, fontWeight: 600, color: '#18e299', marginTop: 4 }}>
             {enabledUsers} Active
           </div>
         </div>
 
         <div className="glass-card" style={{ padding: '14px 18px' }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Administrator Accounts</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#ffbe0b', marginTop: 4 }}>
+          <div style={{ fontSize: 24, fontWeight: 600, color: '#ffbe0b', marginTop: 4 }}>
             {adminUsers} Admins
           </div>
         </div>
 
         <div className="glass-card" style={{ padding: '14px 18px' }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Disabled / Locked Accounts</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#ff2a85', marginTop: 4 }}>
+          <div style={{ fontSize: 24, fontWeight: 600, color: '#ff2a85', marginTop: 4 }}>
             {disabledUsers} Disabled
           </div>
         </div>
@@ -282,7 +282,7 @@ export default function PowerUserManager({ setStatusBanner }: Props) {
         ) : filteredUsers.length === 0 ? (
           <div style={{ padding: 60, textAlign: 'center' }}>
             <CheckCircle2 size={42} color="#18e299" style={{ margin: '0 auto 12px' }} />
-            <div style={{ fontSize: 16, fontWeight: 800 }}>No accounts match the current filter</div>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>No accounts match the current filter</div>
           </div>
         ) : (
           <div className="scroll-table-container">
@@ -328,7 +328,7 @@ export default function PowerUserManager({ setStatusBanner }: Props) {
 
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 14.5, fontWeight: 800, color: '#fff' }}>
+                      <span style={{ fontSize: 14.5, fontWeight: 600, color: '#fff' }}>
                         {user.name}
                       </span>
                       {user.fullName && user.fullName !== user.name && (
@@ -425,7 +425,7 @@ export default function PowerUserManager({ setStatusBanner }: Props) {
         <div className="modal-backdrop" onClick={() => setTargetUser(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div style={{ fontSize: 17, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ fontSize: 17, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <KeyRound size={18} color="#00e5ff" />
                 Reset Password: {targetUser.name}
               </div>

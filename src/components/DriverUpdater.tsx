@@ -92,7 +92,7 @@ export default function DriverUpdater({ setStatusBanner }: Props) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 800 }}>Windows Device Driver Inspector &amp; Updater</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 600 }}>Windows Device Driver Inspector &amp; Updater</h1>
             <span
               style={{
                 fontSize: 11,
@@ -135,14 +135,14 @@ export default function DriverUpdater({ setStatusBanner }: Props) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
         <div className="glass-card" style={{ padding: '14px 18px' }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Total PnP Device Drivers</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#00e5ff', marginTop: 4 }}>
+          <div style={{ fontSize: 24, fontWeight: 600, color: '#00e5ff', marginTop: 4 }}>
             {drivers.length} Devices
           </div>
         </div>
 
         <div className="glass-card" style={{ padding: '14px 18px' }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>WHQL Digital Signatures</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#18e299', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ fontSize: 24, fontWeight: 600, color: '#18e299', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
             <ShieldCheck size={22} color="#18e299" />
             {drivers.filter((d) => d.isSigned).length} Signed
           </div>
@@ -150,7 +150,7 @@ export default function DriverUpdater({ setStatusBanner }: Props) {
 
         <div className="glass-card" style={{ padding: '14px 18px' }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Driver Health Status</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#ffbe0b', marginTop: 4 }}>
+          <div style={{ fontSize: 24, fontWeight: 600, color: '#ffbe0b', marginTop: 4 }}>
             100% Operational
           </div>
         </div>
@@ -209,7 +209,7 @@ export default function DriverUpdater({ setStatusBanner }: Props) {
         ) : filtered.length === 0 ? (
           <div style={{ padding: 60, textAlign: 'center' }}>
             <CheckCircle2 size={42} color="#18e299" style={{ margin: '0 auto 12px' }} />
-            <div style={{ fontSize: 16, fontWeight: 800 }}>No drivers found for this filter</div>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>No drivers found for this filter</div>
           </div>
         ) : (
           <div className="scroll-table-container">
