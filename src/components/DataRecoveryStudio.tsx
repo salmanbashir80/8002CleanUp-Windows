@@ -27,6 +27,7 @@ interface DeletedFileItem {
   category: string;
   extension: string;
   recoverable: boolean;
+  source?: string;
   selected?: boolean;
 }
 
@@ -210,16 +211,27 @@ export default function DataRecoveryStudio({ setStatusBanner, formatBytes }: Pro
         <div style={{ display: 'flex', gap: 10 }}>
           <button
             className="btn-secondary"
+            onClick={async () => {
+              window.electronAPI?.openExternal?.('file:///' + 'C:/Users/basco/OneDrive/Desktop/Recovered_Files');
+            }}
+            style={{ fontSize: 12, padding: '7px 12px', display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <FolderOpen size={14} color="#00e5ff" />
+            Open Recovered Folder
+          </button>
+          <button
+            className="btn-secondary"
             onClick={handleRunSelfTest}
             disabled={testingEngine}
             style={{
               borderColor: '#18e299',
               background: 'rgba(24,226,153,0.12)',
-              color: '#fff'
+              color: '#fff',
+              fontWeight: 600
             }}
           >
             <Play size={13} fill="#18e299" color="#18e299" />
-            {testingEngine ? 'Testing Probe…' : 'Run Live Recovery Self-Test'}
+            {testingEngine ? 'Testing Probe…' : 'Run Live Recovery Probe Test'}
           </button>
           <button className="btn-secondary" onClick={handleScanDeletedFiles} disabled={loading || recovering}>
             <RotateCcw size={14} className={loading ? 'animate-spin' : ''} />
@@ -417,7 +429,7 @@ export default function DataRecoveryStudio({ setStatusBanner, formatBytes }: Pro
                 </div>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 14, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {file.fileName}
                     </span>
@@ -433,6 +445,21 @@ export default function DataRecoveryStudio({ setStatusBanner, formatBytes }: Pro
                     >
                       {file.category}
                     </span>
+                    {file.source && (
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          padding: '1.5px 6px',
+                          borderRadius: 4,
+                          background: 'rgba(255,255,255,0.06)',
+                          color: 'var(--text-secondary)',
+                          border: '1px solid rgba(255,255,255,0.1)'
+                        }}
+                      >
+                        {file.source}
+                      </span>
+                    )}
                   </div>
 
                   <div style={{ fontSize: 11, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>
