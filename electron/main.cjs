@@ -1460,28 +1460,34 @@ ipcMain.handle('get-startup-apps', async () => {
   return [];
 });
 
-// Windows Registry Cleaner: Scan Real Orphaned Keys
-ipcMain.handle('scan-registry', async () => {
+// Windows Registry Cleaner: Scan Real Orphaned Keys (CCleaner Architecture)
+ipcMain.handle('scan-registry', async (_event, options) => {
   if (process.platform !== 'win32') return [];
+  const selectedCategories = (options && Array.isArray(options.categories)) ? options.categories : null;
+
   const psScript = `\$ProgressPreference = 'SilentlyContinue'
 \$issues = @()
 
 # 1. Obsolete MuiCache
-\$muiPath = 'HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\MuiCache'
-if (Test-Path \$muiPath) {
-    \$props = Get-ItemProperty -Path \$muiPath -ErrorAction SilentlyContinue
+\$mui = 'HKCU:\\Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\MuiCache'
+if (Test-Path \$mui) {
+    \$props = Get-ItemProperty -Path \$mui -ErrorAction SilentlyContinue
     foreach (\$p in \$props.PSObject.Properties) {
-        \$name = \$p.Name
-        if (\$name -match '^[A-Za-z]:\\\\.*\\.exe(\\.FriendlyAppName|\\.ApplicationCompany)?$') {
-            \$exePath = \$name -replace '(\\.FriendlyAppName|\\.ApplicationCompany)$', ''
-            if (-not (Test-Path \$exePath)) {
+        \$n = \$p.Name
+        if (\$n -match '^[A-Za-z]:\\\\.*\\.exe(\\.FriendlyAppName|\\.ApplicationCompany)?$') {
+            \$exe = \$n -replace '(\\.FriendlyAppName|\\.ApplicationCompany)$', ''
+            if (-not (Test-Path \$exe)) {
+                \$hash = [math]::Abs(\$n.GetHashCode())
                 \$issues += [PSCustomObject]@{
-                    id = "mui_$([math]::Abs(\$name.GetHashCode()))"
+                    id = "mui_\$hash"
                     category = 'Obsolete MUI Cache'
-                    keyPath = \$muiPath
-                    valueName = \$name
-                    details = "Target executable deleted from disk: \$exePath"
-                    safety = 'Safe to Clean'
+                    keyPath = \$mui
+                    hive = 'HKCU'
+                    valueName = \$n
+                    isKeyOnly = \$false
+                    details = "Target executable deleted from disk: \$exe"
+                    safety = '100% Safe to Clean'
+                    valueData = "\$(\$p.Value)"
                     selected = \$true
                 }
             }
@@ -1489,26 +1495,28 @@ if (Test-Path \$muiPath) {
     }
 }
 
-# 2. Orphaned Startup / Run entries
-\$runKeys = @(
-    'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run',
-    'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
-)
-foreach (\$rk in \$runKeys) {
-    if (Test-Path \$rk) {
-        \$props = Get-ItemProperty -Path \$rk -ErrorAction SilentlyContinue
-        foreach (\$p in \$props.PSObject.Properties) {
-            \$val = "$(\$p.Value)"
-            if (\$val -match '^"?([A-Za-z]:\\[^"]+\\.exe)"?') {
-                \$exe = \$matches[1]
-                if (-not (Test-Path \$exe)) {
+# 2. Application Paths (App Paths)
+\$appPaths = @('HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths', 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths')
+foreach (\$ap in \$appPaths) {
+    if (Test-Path \$ap) {
+        \$subkeys = Get-ChildItem -Path \$ap -ErrorAction SilentlyContinue
+        foreach (\$sk in \$subkeys) {
+            \$def = (Get-ItemProperty -Path \$sk.PSPath -Name '(default)' -ErrorAction SilentlyContinue).'(default)'
+            if (\$def) {
+                \$cleanPath = \$def.Trim('"')
+                if (\$cleanPath -match '^[A-Za-z]:\\\\' -and -not (Test-Path \$cleanPath)) {
+                    \$hash = [math]::Abs(\$sk.PSChildName.GetHashCode())
+                    \$cleanKey = \$sk.PSPath -replace '^Microsoft\\.PowerShell\\.Core\\\\Registry::', ''
                     \$issues += [PSCustomObject]@{
-                        id = "run_$([math]::Abs(\$p.Name.GetHashCode()))"
-                        category = 'Orphaned Startup Key'
-                        keyPath = \$rk
-                        valueName = \$p.Name
-                        details = "Referenced program no longer exists: \$exe"
-                        safety = 'Safe to Clean'
+                        id = "apppath_\$hash"
+                        category = 'Application Paths'
+                        keyPath = \$cleanKey
+                        hive = (\$cleanKey -split '\\\\')[0]
+                        valueName = '(default)'
+                        isKeyOnly = \$true
+                        details = "Application executable missing: \$cleanPath"
+                        safety = '100% Safe to Clean'
+                        valueData = "\$def"
                         selected = \$true
                     }
                 }
@@ -1517,22 +1525,160 @@ foreach (\$rk in \$runKeys) {
     }
 }
 
-# 3. Explorer RunMRU Stale History
+# 3. Orphaned Startup Keys (Run & RunOnce)
+\$runKeys = @(
+    'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run',
+    'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run',
+    'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce',
+    'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce'
+)
+foreach (\$rk in \$runKeys) {
+    if (Test-Path \$rk) {
+        \$props = Get-ItemProperty -Path \$rk -ErrorAction SilentlyContinue
+        foreach (\$p in \$props.PSObject.Properties) {
+            \$val = "\$(\$p.Value)"
+            if (\$val -match '^["]?([A-Za-z]:\\\\[^"]+\\.exe)') {
+                \$exe = \$matches[1]
+                if (-not (Test-Path \$exe)) {
+                    \$hash = [math]::Abs(\$p.Name.GetHashCode())
+                    \$issues += [PSCustomObject]@{
+                        id = "run_\$hash"
+                        category = 'Run At Startup'
+                        keyPath = \$rk
+                        hive = (\$rk -split '\\\\')[0]
+                        valueName = \$p.Name
+                        isKeyOnly = \$false
+                        details = "Dead startup application: \$exe"
+                        safety = '100% Safe to Clean'
+                        valueData = "\$val"
+                        selected = \$true
+                    }
+                }
+            }
+        }
+    }
+}
+
+# 4. OpenWith Associations & File Extension Handlers
+\$fileExts = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts'
+if (Test-Path \$fileExts) {
+    \$extKeys = Get-ChildItem -Path \$fileExts -ErrorAction SilentlyContinue
+    foreach (\$ek in \$extKeys) {
+        \$owl = Join-Path \$ek.PSPath 'OpenWithList'
+        if (Test-Path \$owl) {
+            \$props = Get-ItemProperty -Path \$owl -ErrorAction SilentlyContinue
+            foreach (\$p in \$props.PSObject.Properties) {
+                if (\$p.Name -match '^[a-z]$' -and "\$(\$p.Value)" -match '\\.exe$') {
+                    \$appExe = "\$(\$p.Value)"
+                    \$appPathKey = "HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\\$appExe"
+                    if (-not (Test-Path \$appPathKey)) {
+                        \$localExe = Join-Path "\$env:ProgramFiles" \$appExe
+                        \$localExe86 = Join-Path "\${env:ProgramFiles(x86)}" \$appExe
+                        \$windirExe = Join-Path "\$env:windir" \$appExe
+                        if (-not (Test-Path \$localExe) -and -not (Test-Path \$localExe86) -and -not (Test-Path \$windirExe)) {
+                            \$hash = [math]::Abs((\$ek.PSChildName + \$p.Name).GetHashCode())
+                            \$cleanKey = \$owl -replace '^Microsoft\\.PowerShell\\.Core\\\\Registry::', ''
+                            \$issues += [PSCustomObject]@{
+                                id = "owl_\$hash"
+                                category = 'OpenWith Associations'
+                                keyPath = \$cleanKey
+                                hive = 'HKCU'
+                                valueName = \$p.Name
+                                isKeyOnly = \$false
+                                details = "Unregistered executable in OpenWith: \$appExe"
+                                safety = '100% Safe to Clean'
+                                valueData = "\$(\$p.Value)"
+                                selected = \$true
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+# 5. Missing Shared DLLs
+\$sharedDlls = 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\SharedDLLs'
+if (Test-Path \$sharedDlls) {
+    \$props = Get-ItemProperty -Path \$sharedDlls -ErrorAction SilentlyContinue
+    foreach (\$p in \$props.PSObject.Properties) {
+        if (\$p.Name -match '^[A-Za-z]:\\\\' -and -not (Test-Path \$p.Name)) {
+            \$hash = [math]::Abs(\$p.Name.GetHashCode())
+            \$issues += [PSCustomObject]@{
+                id = "dll_\$hash"
+                category = 'Missing Shared DLLs'
+                keyPath = \$sharedDlls
+                hive = 'HKLM'
+                valueName = \$p.Name
+                isKeyOnly = \$false
+                details = "Referenced shared library missing: \$(\$p.Name)"
+                safety = '100% Safe to Clean'
+                valueData = "\$(\$p.Value)"
+                selected = \$true
+            }
+        }
+    }
+}
+
+# 6. Stale RunMRU History
 \$runMru = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\RunMRU'
 if (Test-Path \$runMru) {
     \$props = Get-ItemProperty -Path \$runMru -ErrorAction SilentlyContinue
     foreach (\$p in \$props.PSObject.Properties) {
         if (\$p.Name -match '^[a-z]$') {
-            \$cmd = "$(\$p.Value)" -replace '\\\\1$', ''
+            \$cmd = "\$(\$p.Value)" -replace '\\\\1$', ''
             if (\$cmd -match '^[A-Za-z]:\\\\[^\\\\]+\\.exe$' -and -not (Test-Path \$cmd)) {
+                \$hash = [math]::Abs(\$p.Name.GetHashCode())
                 \$issues += [PSCustomObject]@{
-                    id = "mru_$([math]::Abs(\$p.Name.GetHashCode()))"
+                    id = "mru_\$hash"
                     category = 'Stale RunMRU History'
                     keyPath = \$runMru
+                    hive = 'HKCU'
                     valueName = \$p.Name
+                    isKeyOnly = \$false
                     details = "History trace of missing binary: \$cmd"
-                    safety = 'Safe to Clean'
+                    safety = '100% Safe to Clean'
+                    valueData = "\$(\$p.Value)"
                     selected = \$true
+                }
+            }
+        }
+    }
+}
+
+# 7. Uninstaller Leftovers
+\$uninstallKeys = @(
+    'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall',
+    'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall',
+    'HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall'
+)
+foreach (\$uk in \$uninstallKeys) {
+    if (Test-Path \$uk) {
+        \$sub = Get-ChildItem -Path \$uk -ErrorAction SilentlyContinue
+        foreach (\$s in \$sub) {
+            \$p = Get-ItemProperty -Path \$s.PSPath -ErrorAction SilentlyContinue
+            \$disp = \$p.DisplayName
+            \$uninst = \$p.UninstallString
+            if (\$disp -and \$uninst) {
+                if (\$uninst -match '^["]?([A-Za-z]:\\\\[^"]+\\.exe)') {
+                    \$exe = \$matches[1]
+                    if (-not (Test-Path \$exe)) {
+                        \$hash = [math]::Abs(\$s.PSChildName.GetHashCode())
+                        \$cleanKey = \$s.PSPath -replace '^Microsoft\\.PowerShell\\.Core\\\\Registry::', ''
+                        \$issues += [PSCustomObject]@{
+                            id = "uninst_\$hash"
+                            category = 'Uninstaller Leftovers'
+                            keyPath = \$cleanKey
+                            hive = (\$cleanKey -split '\\\\')[0]
+                            valueName = '(default)'
+                            isKeyOnly = \$true
+                            details = "Uninstall executable missing: \$exe (\$disp)"
+                            safety = '100% Safe to Clean'
+                            valueData = "\$uninst"
+                            selected = \$true
+                        }
+                    }
                 }
             }
         }
@@ -1544,11 +1690,15 @@ if (Test-Path \$runMru) {
   const tmpFile = path.join(os.tmpdir(), `8002_reg_${Date.now()}.ps1`);
   try {
     fs.writeFileSync(tmpFile, psScript, 'utf8');
-    const res = await execAsync(`powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${tmpFile}"`, 15000);
+    const res = await execAsync(`powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${tmpFile}"`, 20000);
     try { fs.unlinkSync(tmpFile); } catch (_) {}
     if (res.stdout.trim()) {
-      const parsed = JSON.parse(res.stdout.trim());
-      return Array.isArray(parsed) ? parsed : [parsed];
+      let parsed = JSON.parse(res.stdout.trim());
+      if (!Array.isArray(parsed)) parsed = [parsed];
+      if (selectedCategories && selectedCategories.length > 0) {
+        parsed = parsed.filter(i => selectedCategories.includes(i.category));
+      }
+      return parsed;
     }
   } catch (_e) {
     try { fs.unlinkSync(tmpFile); } catch (_) {}
@@ -1556,17 +1706,182 @@ if (Test-Path \$runMru) {
   return [];
 });
 
-// Windows Registry Cleaner: Clean Selected Orphaned Values
+// Windows Registry Cleaner: Create .reg Backup File (CCleaner Architecture)
+ipcMain.handle('backup-registry', async (_event, { issues }) => {
+  const list = Array.isArray(issues) ? issues : [];
+  if (list.length === 0) {
+    return { success: false, message: 'No entries selected for backup.' };
+  }
+
+  let documentsPath = '';
+  try {
+    documentsPath = app.getPath('documents');
+  } catch (_) {
+    documentsPath = path.join(os.homedir(), 'Documents');
+  }
+  const backupDir = path.join(documentsPath, '8002CleanUp_Registry_Backups');
+  if (!fs.existsSync(backupDir)) {
+    fs.mkdirSync(backupDir, { recursive: true });
+  }
+
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  const filename = `Registry_Backup_${timestamp}.reg`;
+  const backupPath = path.join(backupDir, filename);
+
+  const grouped = {};
+  for (const item of list) {
+    if (!item.keyPath) continue;
+    let hiveHeader = item.keyPath
+      .replace(/^HKCU:\\/i, 'HKEY_CURRENT_USER\\')
+      .replace(/^HKLM:\\/i, 'HKEY_LOCAL_MACHINE\\')
+      .replace(/^HKCU\\/i, 'HKEY_CURRENT_USER\\')
+      .replace(/^HKLM\\/i, 'HKEY_LOCAL_MACHINE\\')
+      .replace(/^HKCR:\\/i, 'HKEY_CLASSES_ROOT\\')
+      .replace(/^HKCR\\/i, 'HKEY_CLASSES_ROOT\\');
+
+    if (!grouped[hiveHeader]) grouped[hiveHeader] = [];
+    grouped[hiveHeader].push(item);
+  }
+
+  let regText = '\uFEFFWindows Registry Editor Version 5.00\r\n\r\n';
+  regText += `; ================================================================\r\n`;
+  regText += `; 8002CleanUp Pro — Windows Registry Cleaner Backup\r\n`;
+  regText += `; Backup Timestamp: ${now.toLocaleString()}\r\n`;
+  regText += `; Total Backed Up Entries: ${list.length}\r\n`;
+  regText += `; Target File: ${filename}\r\n`;
+  regText += `; Instructions: Double-click this file or use 8002CleanUp to restore.\r\n`;
+  regText += `; ================================================================\r\n\r\n`;
+
+  for (const [keyHeader, items] of Object.entries(grouped)) {
+    regText += `[${keyHeader}]\r\n`;
+    for (const it of items) {
+      if (it.isKeyOnly) {
+        const valData = (it.valueData || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        regText += `@="${valData}"\r\n`;
+      } else if (it.valueName) {
+        const valName = it.valueName.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        const valData = (it.valueData !== undefined ? String(it.valueData) : '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        regText += `"${valName}"="${valData}"\r\n`;
+      }
+    }
+    regText += '\r\n';
+  }
+
+  fs.writeFileSync(backupPath, Buffer.from(regText, 'utf16le'));
+
+  return {
+    success: true,
+    backupPath,
+    filename,
+    count: list.length,
+    message: `Registry backup safely created: ${filename}`
+  };
+});
+
+// Windows Registry Cleaner: List Saved .reg Backups
+ipcMain.handle('list-registry-backups', async () => {
+  let documentsPath = '';
+  try {
+    documentsPath = app.getPath('documents');
+  } catch (_) {
+    documentsPath = path.join(os.homedir(), 'Documents');
+  }
+  const backupDir = path.join(documentsPath, '8002CleanUp_Registry_Backups');
+  if (!fs.existsSync(backupDir)) return [];
+
+  try {
+    const files = fs.readdirSync(backupDir).filter((f) => f.endsWith('.reg'));
+    const results = [];
+    for (const f of files) {
+      const fullPath = path.join(backupDir, f);
+      try {
+        const stat = fs.statSync(fullPath);
+        results.push({
+          filename: f,
+          fullPath,
+          sizeBytes: stat.size,
+          sizeFormatted: `${(stat.size / 1024).toFixed(1)} KB`,
+          createdAt: stat.birthtime,
+          modifiedAt: stat.mtime,
+          dateFormatted: stat.mtime.toLocaleString()
+        });
+      } catch (_) {}
+    }
+    results.sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime());
+    return results;
+  } catch (_) {
+    return [];
+  }
+});
+
+// Windows Registry Cleaner: Restore .reg Backup File
+ipcMain.handle('restore-registry-backup', async (_event, { backupPath }) => {
+  if (!backupPath || !fs.existsSync(backupPath)) {
+    return { success: false, message: 'Registry backup file does not exist.' };
+  }
+  try {
+    await execAsync(`reg.exe import "${backupPath}"`, 15000);
+    return {
+      success: true,
+      message: `Registry backup '${path.basename(backupPath)}' was successfully restored into Windows Registry!`
+    };
+  } catch (err) {
+    return {
+      success: false,
+      message: `Failed to restore registry backup: ${err.message}`
+    };
+  }
+});
+
+// Windows Registry Cleaner: Open Backups Folder in Explorer
+ipcMain.handle('open-registry-backup-folder', async () => {
+  let documentsPath = '';
+  try {
+    documentsPath = app.getPath('documents');
+  } catch (_) {
+    documentsPath = path.join(os.homedir(), 'Documents');
+  }
+  const backupDir = path.join(documentsPath, '8002CleanUp_Registry_Backups');
+  if (!fs.existsSync(backupDir)) {
+    fs.mkdirSync(backupDir, { recursive: true });
+  }
+  shell.openPath(backupDir);
+  return { success: true };
+});
+
+// Windows Registry Cleaner: Delete Backup
+ipcMain.handle('delete-registry-backup', async (_event, { backupPath }) => {
+  if (backupPath && fs.existsSync(backupPath)) {
+    try {
+      fs.unlinkSync(backupPath);
+      return { success: true, message: 'Backup file removed.' };
+    } catch (err) {
+      return { success: false, message: err.message };
+    }
+  }
+  return { success: false, message: 'File not found.' };
+});
+
+// Windows Registry Cleaner: Clean Selected Orphaned Values or Keys
 ipcMain.handle('clean-registry', async (_event, { issues }) => {
   const list = Array.isArray(issues) ? issues : [];
   let cleaned = 0;
   for (const item of list) {
-    if (!item.keyPath || !item.valueName) continue;
+    if (!item.keyPath) continue;
     try {
-      const psCmd = `Remove-ItemProperty -Path '${item.keyPath.replace(/'/g, "''")}' -Name '${item.valueName.replace(/'/g, "''")}' -ErrorAction SilentlyContinue`;
-      const b64 = Buffer.from(psCmd, 'utf16le').toString('base64');
-      await execAsync(`powershell.exe -NoProfile -EncodedCommand ${b64}`, 3000);
-      cleaned += 1;
+      let psCmd = '';
+      if (item.isKeyOnly) {
+        psCmd = `Remove-Item -Path '${item.keyPath.replace(/'/g, "''")}' -Recurse -Force -ErrorAction SilentlyContinue`;
+      } else if (item.valueName) {
+        psCmd = `Remove-ItemProperty -Path '${item.keyPath.replace(/'/g, "''")}' -Name '${item.valueName.replace(/'/g, "''")}' -Force -ErrorAction SilentlyContinue`;
+      }
+      if (psCmd) {
+        const b64 = Buffer.from(psCmd, 'utf16le').toString('base64');
+        await execAsync(`powershell.exe -NoProfile -EncodedCommand ${b64}`, 4000);
+        cleaned += 1;
+      }
     } catch (_) {}
     await new Promise((r) => setImmediate(r));
   }

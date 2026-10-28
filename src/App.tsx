@@ -80,8 +80,13 @@ declare global {
       selectFileForShred: () => Promise<any>;
       shredFile: (filePath: string) => Promise<any>;
       showItemInFolder: (fullPath: string) => Promise<any>;
-      scanRegistry: () => Promise<any[]>;
+      scanRegistry: (options?: any) => Promise<any[]>;
       cleanRegistry: (issues: any[]) => Promise<any>;
+      backupRegistry: (issues: any[]) => Promise<{ success: boolean; backupPath: string; filename: string; count: number; message: string }>;
+      listRegistryBackups: () => Promise<any[]>;
+      restoreRegistryBackup: (backupPath: string) => Promise<{ success: boolean; message: string }>;
+      openRegistryBackupFolder: () => Promise<{ success: boolean }>;
+      deleteRegistryBackup: (backupPath: string) => Promise<{ success: boolean; message?: string }>;
       scanDrivers: () => Promise<any[]>;
       checkDriverUpdates: () => Promise<any>;
       testInternetSpeed: () => Promise<any>;
@@ -1076,7 +1081,7 @@ export default function App() {
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 6 }}>
-            <span style={{ color: 'var(--text-secondary)' }}>v2.3.1 Pro</span>
+            <span style={{ color: 'var(--text-secondary)' }}>v2.3.2 Pro</span>
             <span style={{ color: '#18e299', fontWeight: 600 }}>● Live Engine</span>
           </div>
           <button
