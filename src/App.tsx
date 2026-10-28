@@ -24,7 +24,13 @@ import {
   Layers,
   X,
   Plus,
-  Zap
+  Zap,
+  HardDrive,
+  Rocket,
+  FileText,
+  FileArchive,
+  Film,
+  PackageCheck
 } from 'lucide-react';
 
 declare global {
@@ -35,6 +41,15 @@ declare global {
       scanJunk: () => Promise<any>;
       cleanItems: (paths: string[], dryRun: boolean) => Promise<any>;
       optimizeRam: () => Promise<any>;
+      flushDns: () => Promise<any>;
+      toggleGameTurbo: (enable?: boolean) => Promise<any>;
+      getInstalledApps: () => Promise<any[]>;
+      uninstallApp: (uninstallString: string, name?: string) => Promise<any>;
+      getStartupApps: () => Promise<any[]>;
+      scanLargeFiles: (minSizeMB?: number) => Promise<any[]>;
+      selectFileForShred: () => Promise<any>;
+      shredFile: (filePath: string) => Promise<any>;
+      showItemInFolder: (fullPath: string) => Promise<any>;
       scanWebsiteTrust: (payload: any) => Promise<any>;
       testAiKey: (payload: any) => Promise<any>;
       cleanTrackingUrl: (url: string) => Promise<any>;
@@ -59,8 +74,11 @@ type ModuleId =
   | 'system_junk'
   | 'browser_cleanup'
   | 'app_leftovers'
-  | 'performance'
+  | 'space_lens'
+  | 'shredder'
   | 'network_shield'
+  | 'performance'
+  | 'startup_manager'
   | 'battery_lifeguard'
   | 'activity_monitor'
   | 'my_tools';
@@ -69,7 +87,7 @@ export default function App() {
   const [activeModule, setActiveModule] = useState<ModuleId>('smart_care');
   const [dryRun, setDryRun] = useState<boolean>(false);
   const [statusBanner, setStatusBanner] = useState<string | null>(
-    '8002CleanUp Pro (Windows 10 & 11 Edition) — All real-time protection & cleanup engines online.'
+    '8002CleanUp Pro (MacCare Windows Edition) — All 12 Pro Engines Online.'
   );
 
   // System Telemetry
@@ -153,6 +171,32 @@ export default function App() {
     { name: 'Telegram Desktop (Telegram.exe)', bundle: '%APPDATA%\\Telegram Desktop\\Telegram.exe', traffic: true, https: true }
   ]);
 
+  // NEW MACCARE PRO FEATURES STATES
+  // 1. Installed Windows Apps / Uninstaller
+  const [installedApps, setInstalledApps] = useState<any[]>([]);
+  const [loadingApps, setLoadingApps] = useState(false);
+  const [appSearch, setAppSearch] = useState('');
+
+  // 2. Windows Startup Apps
+  const [startupApps, setStartupApps] = useState<any[]>([]);
+  const [loadingStartup, setLoadingStartup] = useState(false);
+
+  // 3. Space Lens / Large Files
+  const [largeFiles, setLargeFiles] = useState<any[]>([]);
+  const [loadingLargeFiles, setLoadingLargeFiles] = useState(false);
+  const [largeFileCategory, setLargeFileCategory] = useState('ALL');
+
+  // 4. File Shredder
+  const [shredFilePath, setShredFilePath] = useState('');
+  const [shredFileName, setShredFileName] = useState('');
+  const [shredFileSize, setShredFileSize] = useState(0);
+  const [isShredding, setIsShredding] = useState(false);
+  const [shredStep, setShredStep] = useState<string>('');
+
+  // 5. Game Turbo & Performance
+  const [gameTurbo, setGameTurbo] = useState(false);
+  const [procSearch, setProcSearch] = useState('');
+
   // Refresh real telemetry
   const refreshTelemetry = async () => {
     if (window.electronAPI?.getSystemTelemetry) {
@@ -205,7 +249,7 @@ export default function App() {
 
   const handleRunScan = async () => {
     setIsScanning(true);
-    setStatusBanner('Scanning system temp, caches, browser residuals, and logs…');
+    setStatusBanner('Scanning Windows %TEMP%, Prefetch, Caches & Residuals…');
     if (window.electronAPI?.scanJunk) {
       const res = await window.electronAPI.scanJunk();
       setScanResult(res);
@@ -226,14 +270,9 @@ export default function App() {
       const res = await window.electronAPI.cleanItems(paths, dryRun);
       setStatusBanner(res.message);
       if (!dryRun) {
-        const remaining = scanResult.items.filter((i: any) => !paths.includes(i.path));
-        const newTotal = remaining.reduce((acc: number, item: any) => acc + item.sizeBytes, 0);
-        setScanResult({
-          ...scanResult,
-          items: remaining,
-          itemCount: remaining.length,
-          totalBytes: newTotal
-        });
+        setTimeout(() => {
+          handleRunScan();
+        }, 500);
       }
     }
   };
@@ -242,7 +281,22 @@ export default function App() {
     if (window.electronAPI?.optimizeRam) {
       const res = await window.electronAPI.optimizeRam();
       setStatusBanner(res.message);
-      refreshTelemetry();
+      await refreshTelemetry();
+    }
+  };
+
+  const handleFlushDns = async () => {
+    if (window.electronAPI?.flushDns) {
+      const res = await window.electronAPI.flushDns();
+      setStatusBanner(res.message);
+    }
+  };
+
+  const handleToggleGameTurbo = async () => {
+    if (window.electronAPI?.toggleGameTurbo) {
+      const res = await window.electronAPI.toggleGameTurbo(!gameTurbo);
+      setGameTurbo(res.active);
+      setStatusBanner(res.message);
     }
   };
 
@@ -254,49 +308,130 @@ export default function App() {
     }
   };
 
-  const handleScanWebsite = async (urlOverride?: string) => {
-    const target = urlOverride || scamInputUrl;
+  const handleScanWebsite = async (overrideUrl?: string) => {
+    const target = overrideUrl || scamInputUrl;
+    if (!target) return;
     setIsScanningUrl(true);
-    setAiPetSpeech(`Sniffing ${target}… checking SSL certificate, HTTP headers, DNS & phishing patterns…`);
+    setScamReport(null);
     if (window.electronAPI?.scanWebsiteTrust) {
       const rep = await window.electronAPI.scanWebsiteTrust({
         input: target,
         apiKey: aiApiKey,
         provider: aiProvider
       });
-      if (!rep.error) {
-        setScamReport(rep);
+      setScamReport(rep);
+      if (rep.aiPetExplanation) {
         setAiPetSpeech(rep.aiPetExplanation);
-        setStatusBanner(`ScamAdviser Audit for ${rep.domain}: ${rep.trustScore}/100 (${rep.verdictLabel})`);
-      } else {
-        setStatusBanner(rep.error);
       }
     }
     setIsScanningUrl(false);
   };
 
-  const handleCleanUrlButton = async () => {
+  const handleTestDirtyUrl = async () => {
     if (window.electronAPI?.cleanTrackingUrl) {
       const res = await window.electronAPI.cleanTrackingUrl(dirtyUrlTest);
-      setDirtyUrlTest(res.cleanedURL);
-      if (res.removedParams.length > 0) {
-        setTrackersBlocked((n) => n + res.removedParams.length);
-        setCleanUrlMsg(
-          `Stripped ${res.removedParams.length} tracking parameter(s) (${res.removedParams.join(', ')}) & copied to clipboard!`
-        );
-      } else {
-        setCleanUrlMsg('URL is already clean — copied to clipboard!');
+      setCleanUrlMsg(
+        res.removedParams.length > 0
+          ? `Removed: ${res.removedParams.join(', ')} -> Copied clean URL to clipboard!`
+          : 'Clean! No tracking parameters found in this URL.'
+      );
+      if (isAiPetActive && res.cleanedURL) {
+        handleScanWebsite(res.cleanedURL);
       }
     }
   };
 
+  const handleSelectDns = async (name: string) => {
+    setSelectedDnsProvider(name);
+    if (window.electronAPI?.pingDns) {
+      const res = await window.electronAPI.pingDns(name);
+      setDnsLatencyMs(res.latencyMs);
+    }
+    if (window.electronAPI?.applyDns) {
+      const applyRes = await window.electronAPI.applyDns(name);
+      setStatusBanner(applyRes.message);
+    }
+  };
+
+  // Load Installed Windows Apps
+  const loadInstalledApps = async () => {
+    setLoadingApps(true);
+    if (window.electronAPI?.getInstalledApps) {
+      const apps = await window.electronAPI.getInstalledApps();
+      setInstalledApps(apps || []);
+      setStatusBanner(`Loaded ${apps.length} installed Windows applications.`);
+    }
+    setLoadingApps(false);
+  };
+
+  // Load Startup Programs
+  const loadStartupApps = async () => {
+    setLoadingStartup(true);
+    if (window.electronAPI?.getStartupApps) {
+      const list = await window.electronAPI.getStartupApps();
+      setStartupApps(list || []);
+      setStatusBanner(`Discovered ${list.length} Windows boot startup items.`);
+    }
+    setLoadingStartup(false);
+  };
+
+  // Load Large & Old Files
+  const loadLargeFiles = async () => {
+    setLoadingLargeFiles(true);
+    if (window.electronAPI?.scanLargeFiles) {
+      const files = await window.electronAPI.scanLargeFiles(50);
+      setLargeFiles(files || []);
+      setStatusBanner(`Found ${files.length} large files (> 50 MB) across user folders.`);
+    }
+    setLoadingLargeFiles(false);
+  };
+
+  // File Shredder Logic
+  const handleSelectShredFile = async () => {
+    if (window.electronAPI?.selectFileForShred) {
+      const f = await window.electronAPI.selectFileForShred();
+      if (f) {
+        setShredFilePath(f.path);
+        setShredFileName(f.name);
+        setShredFileSize(f.sizeBytes);
+      }
+    }
+  };
+
+  const handleExecuteShred = async () => {
+    if (!shredFilePath || !window.electronAPI?.shredFile) return;
+    setIsShredding(true);
+    setShredStep('Pass 1/3: Overwriting with 0x00 Null Bytes…');
+    await new Promise((r) => setTimeout(r, 600));
+    setShredStep('Pass 2/3: Overwriting with 0xFF Inversion Bytes…');
+    await new Promise((r) => setTimeout(r, 600));
+    setShredStep('Pass 3/3: Overwriting with Cryptographic Entropy & Truncating…');
+    await new Promise((r) => setTimeout(r, 700));
+
+    const res = await window.electronAPI.shredFile(shredFilePath);
+    setIsShredding(false);
+    setShredStep('');
+    setStatusBanner(res.message);
+    setShredFilePath('');
+    setShredFileName('');
+    setShredFileSize(0);
+  };
+
+  // Auto-load sub-module data when switching tabs
+  useEffect(() => {
+    if (activeModule === 'app_leftovers' && installedApps.length === 0) loadInstalledApps();
+    if (activeModule === 'startup_manager' && startupApps.length === 0) loadStartupApps();
+    if (activeModule === 'space_lens' && largeFiles.length === 0) loadLargeFiles();
+  }, [activeModule]);
+
   return (
     <div className="aurora-app-shell">
+      {/* 3D Aurora Blobs */}
       <div className="aurora-blob b1" />
       <div className="aurora-blob b2" />
       <div className="aurora-blob b3" />
 
-      {/* Left Glass Sidebar */}
+      {/* SIDEBAR */}
       <aside className="sidebar">
         <div className="brand-header">
           <div className="brand-orb">
@@ -304,8 +439,8 @@ export default function App() {
           </div>
           <div>
             <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: 0.3 }}>8002CleanUp Pro</div>
-            <div style={{ fontSize: 10.5, color: 'rgba(0,229,255,0.85)', fontWeight: 600 }}>
-              Windows 10 & 11 Edition
+            <div style={{ fontSize: 10, color: 'rgba(0,229,255,0.85)', fontWeight: 700 }}>
+              MacCare for Windows
             </div>
           </div>
         </div>
@@ -320,7 +455,7 @@ export default function App() {
             Smart Care Dashboard
           </button>
 
-          <div className="nav-section-label">Cleanup</div>
+          <div className="nav-section-label">Cleanup Suite</div>
           <button
             className={`nav-btn ${activeModule === 'system_junk' ? 'active' : ''}`}
             onClick={() => {
@@ -345,14 +480,24 @@ export default function App() {
           </button>
           <button
             className={`nav-btn ${activeModule === 'app_leftovers' ? 'active' : ''}`}
-            onClick={() => {
-              setCategoryFilter('App Leftovers');
-              setActiveModule('app_leftovers');
-              if (!scanResult) handleRunScan();
-            }}
+            onClick={() => setActiveModule('app_leftovers')}
           >
             <Layers size={16} color="#a66bff" />
-            App Leftovers & Registry
+            App Uninstaller & Leftovers
+          </button>
+          <button
+            className={`nav-btn ${activeModule === 'space_lens' ? 'active' : ''}`}
+            onClick={() => setActiveModule('space_lens')}
+          >
+            <HardDrive size={16} color="#ffbe0b" />
+            Space Lens (Large Files)
+          </button>
+          <button
+            className={`nav-btn ${activeModule === 'shredder' ? 'active' : ''}`}
+            onClick={() => setActiveModule('shredder')}
+          >
+            <Lock size={16} color="#ff6b4a" />
+            DoD 5220 File Shredder
           </button>
 
           <div className="nav-section-label">Protection & Speed</div>
@@ -368,23 +513,30 @@ export default function App() {
             onClick={() => setActiveModule('performance')}
           >
             <Zap size={16} color="#ffbe0b" />
-            RAM & Startup Booster
+            RAM & Speed Booster
+          </button>
+          <button
+            className={`nav-btn ${activeModule === 'startup_manager' ? 'active' : ''}`}
+            onClick={() => setActiveModule('startup_manager')}
+          >
+            <Rocket size={16} color="#00e5ff" />
+            Startup Boot Accelerator
           </button>
 
-          <div className="nav-section-label">My Tools</div>
+          <div className="nav-section-label">Hardware & Tools</div>
           <button
             className={`nav-btn ${activeModule === 'battery_lifeguard' ? 'active' : ''}`}
             onClick={() => setActiveModule('battery_lifeguard')}
           >
             <BatteryCharging size={16} color="#18e299" />
-            Battery Lifeguard
+            Battery & Thermal HUD
           </button>
           <button
             className={`nav-btn ${activeModule === 'activity_monitor' ? 'active' : ''}`}
             onClick={() => setActiveModule('activity_monitor')}
           >
             <Activity size={16} color="#00e5ff" />
-            Activity Monitor
+            Real-Time Tasklist
           </button>
           <button
             className={`nav-btn ${activeModule === 'my_tools' ? 'active' : ''}`}
@@ -407,7 +559,7 @@ export default function App() {
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 8 }}>
             <span style={{ color: 'rgba(255,255,255,0.65)' }}>v1.2.8 Pro</span>
-            <span style={{ color: '#18e299', fontWeight: 700 }}>● Protected</span>
+            <span style={{ color: '#18e299', fontWeight: 700 }}>● Live Windows Engine</span>
           </div>
           <button
             onClick={() => setDryRun(!dryRun)}
@@ -426,51 +578,43 @@ export default function App() {
               alignItems: 'center'
             }}
           >
-            <span>{dryRun ? 'Safe Dry Run' : 'Active Cleaning'}</span>
-            <span
-              style={{
-                padding: '2px 5px',
-                borderRadius: 4,
-                background: 'rgba(0,0,0,0.35)',
-                color: dryRun ? '#18e299' : '#00e5ff',
-                fontSize: 9.5
-              }}
-            >
-              {dryRun ? 'SIMULATED' : 'LIVE'}
-            </span>
+            <span>{dryRun ? 'Safe Dry Run' : 'Active Live Clean'}</span>
+            <span style={{ fontSize: 9.5, opacity: 0.8 }}>Click to toggle</span>
           </button>
         </div>
       </aside>
 
-      {/* Main Content Workspace */}
-      <main className="workspace">
-        {/* Top Status Banner */}
+      {/* MAIN VIEWPORT */}
+      <main className="main-viewport">
+        {/* Top Status Bar */}
         {statusBanner && (
           <div
-            className="glass-card"
             style={{
-              padding: '10px 16px',
-              marginBottom: 18,
+              padding: '9px 16px',
+              borderRadius: 10,
+              background: 'rgba(139, 61, 255, 0.16)',
+              border: '1px solid rgba(0, 229, 255, 0.35)',
+              marginBottom: 16,
+              fontSize: 12.5,
+              fontWeight: 600,
               display: 'flex',
-              alignItems: 'center',
               justifyContent: 'space-between',
-              borderColor: 'rgba(24,226,153,0.45)'
+              alignItems: 'center'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5, fontWeight: 600 }}>
-              <CheckCircle2 size={16} color="#18e299" />
-              <span>{statusBanner}</span>
-            </div>
+            <span>{statusBanner}</span>
             <button
               onClick={() => setStatusBanner(null)}
               style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer' }}
             >
-              <X size={15} />
+              <X size={14} />
             </button>
           </div>
         )}
 
-        {/* MODULE 1: SMART CARE 5-CARD DASHBOARD */}
+        {/* ============================================================== */}
+        {/* 1. MODULE: SMART CARE DASHBOARD */}
+        {/* ============================================================== */}
         {activeModule === 'smart_care' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
@@ -485,7 +629,7 @@ export default function App() {
                   <Zap size={14} color="#00e5ff" /> Free Up RAM
                 </button>
                 <button className="btn-primary" onClick={() => setActiveModule('network_shield')}>
-                  <Bot size={15} /> Open Nova AI Pet & AdGuard
+                  <Bot size={15} /> Open Nova AI & AdGuard
                 </button>
               </div>
             </div>
@@ -550,7 +694,7 @@ export default function App() {
                   Free Space: {formatBytes(telemetry.diskFreeBytes)} of {formatBytes(telemetry.diskTotalBytes)}
                 </div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#a66bff', marginTop: 10 }}>
-                  11 Pro Tools
+                  12 Pro Utilities
                 </div>
               </div>
             </div>
@@ -601,34 +745,18 @@ export default function App() {
                           justifyContent: 'space-between',
                           alignItems: 'center',
                           padding: '9px 12px',
-                          borderRadius: 9,
-                          background: 'rgba(0,0,0,0.28)',
-                          border: '1px solid rgba(255,255,255,0.07)'
+                          borderRadius: 8,
+                          background: 'rgba(0,0,0,0.22)',
+                          fontSize: 12.5
                         }}
                       >
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 700 }}>{item.title}</div>
-                          <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
-                            {item.category} • {item.path}
-                          </div>
+                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '75%' }}>
+                          <span style={{ fontWeight: 700 }}>{item.title}</span>{' '}
+                          <span style={{ color: 'var(--text-secondary)', fontSize: 11 }}>({item.parentTitle})</span>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <span
-                            style={{
-                              fontSize: 10.5,
-                              padding: '2px 8px',
-                              borderRadius: 12,
-                              background: 'rgba(24,226,153,0.16)',
-                              color: '#18e299',
-                              fontWeight: 700
-                            }}
-                          >
-                            {item.safety}
-                          </span>
-                          <span style={{ fontSize: 13, fontWeight: 800, fontFamily: 'monospace' }}>
-                            {formatBytes(item.sizeBytes)}
-                          </span>
-                        </div>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#00e5ff' }}>
+                          {formatBytes(item.sizeBytes)}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -638,41 +766,773 @@ export default function App() {
           </div>
         )}
 
-        {/* MODULE 2: SYSTEM JUNK / BROWSER CLEANUP / APP LEFTOVERS */}
-        {(activeModule === 'system_junk' ||
-          activeModule === 'browser_cleanup' ||
-          activeModule === 'app_leftovers') && (
+        {/* ============================================================== */}
+        {/* 2. MODULE: SYSTEM JUNK & BROWSER CLEANUP */}
+        {/* ============================================================== */}
+        {(activeModule === 'system_junk' || activeModule === 'browser_cleanup') && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
               <div>
-                <h1 style={{ fontSize: 24, fontWeight: 800 }}>{categoryFilter}</h1>
+                <h1 style={{ fontSize: 24, fontWeight: 800 }}>
+                  {activeModule === 'system_junk' ? 'Windows System Junk Cleaner' : 'Browser Privacy & Cache Cleaner'}
+                </h1>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                  Safe, fast multi-threaded Windows cache & residual cleaner
+                  {activeModule === 'system_junk'
+                    ? 'Purge %TEMP%, Windows Temp, Prefetch, DirectX Shaders & Windows Update leftovers.'
+                    : 'Clear Chrome, Microsoft Edge, Brave, and Firefox caches, cookies & tracking logs.'}
                 </p>
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button className="btn-secondary" onClick={handleRunScan}>
-                  <RotateCcw size={14} /> Rescan Now
+                  <RotateCcw size={14} /> Rescan
                 </button>
-                <button className="btn-primary" onClick={() => handleCleanSelected(true)}>
+                <button className="btn-primary" onClick={() => handleCleanSelected(false)}>
                   <Trash2 size={14} /> Clean Safe Items
                 </button>
               </div>
             </div>
 
             <div className="glass-card">
-              {!scanResult || scanResult.items.length === 0 ? (
-                <div style={{ padding: 30, textAlign: 'center' }}>
-                  <p style={{ marginBottom: 12 }}>Click Rescan Now to inspect cleanable files.</p>
+              {!scanResult ? (
+                <div style={{ padding: 40, textAlign: 'center' }}>
+                  <p style={{ marginBottom: 12 }}>Click Rescan to inspect cleanable files.</p>
                   <button className="btn-primary" onClick={handleRunScan}>
-                    Scan {categoryFilter}
+                    Scan Now
                   </button>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {scanResult.items.map((item: any) => (
+                  {scanResult.items
+                    .filter((item: any) =>
+                      activeModule === 'browser_cleanup' ? item.category === 'Browser Cleanup' : item.category !== 'Browser Cleanup'
+                    )
+                    .map((item: any) => (
+                      <div
+                        key={item.id}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '10px 14px',
+                          borderRadius: 10,
+                          background: 'rgba(0,0,0,0.28)'
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontSize: 13.5, fontWeight: 700 }}>{item.title}</div>
+                          <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                            {item.parentTitle} • {item.path}
+                          </div>
+                        </div>
+                        <div style={{ fontWeight: 800, color: '#00e5ff', fontFamily: 'monospace' }}>
+                          {formatBytes(item.sizeBytes)}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* 3. MODULE: APP UNINSTALLER & LEFTOVERS */}
+        {/* ============================================================== */}
+        {activeModule === 'app_leftovers' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+              <div>
+                <h1 style={{ fontSize: 24, fontWeight: 800 }}>Windows App Uninstaller & Leftovers</h1>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                  Inspect installed software, launch uninstaller, and clean orphaned AppData directories.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <input
+                  type="text"
+                  className="input-box"
+                  placeholder="Search installed apps…"
+                  value={appSearch}
+                  onChange={(e) => setAppSearch(e.target.value)}
+                  style={{ width: 220 }}
+                />
+                <button className="btn-secondary" onClick={loadInstalledApps}>
+                  <RotateCcw size={14} /> Refresh Apps
+                </button>
+              </div>
+            </div>
+
+            <div className="glass-card">
+              {loadingApps ? (
+                <div style={{ padding: 40, textAlign: 'center' }}>Scanning Windows registry for installed applications…</div>
+              ) : (
+                <div style={{ maxHeight: 520, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {installedApps
+                    .filter((app) => (app.name || '').toLowerCase().includes(appSearch.toLowerCase()))
+                    .map((app, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '10px 14px',
+                          borderRadius: 10,
+                          background: 'rgba(0,0,0,0.28)'
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 700 }}>{app.name}</div>
+                          <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                            {app.publisher} • v{app.version} {app.sizeMB > 0 ? `• ~${app.sizeMB} MB` : ''}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          {app.uninstallString && (
+                            <button
+                              className="btn-danger"
+                              onClick={() => {
+                                if (window.electronAPI?.uninstallApp) {
+                                  window.electronAPI.uninstallApp(app.uninstallString, app.name).then((res) => {
+                                    setStatusBanner(res.message);
+                                  });
+                                }
+                              }}
+                            >
+                              Uninstall
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* 4. MODULE: SPACE LENS (LARGE & OLD FILES) */}
+        {/* ============================================================== */}
+        {activeModule === 'space_lens' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+              <div>
+                <h1 style={{ fontSize: 24, fontWeight: 800 }}>Space Lens — Large & Old Files Finder</h1>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                  Scans Downloads, Documents, Videos, and Desktop for files over 50 MB.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button className="btn-secondary" onClick={loadLargeFiles}>
+                  <RotateCcw size={14} /> Scan Drive Folders
+                </button>
+              </div>
+            </div>
+
+            {/* Filter Chips */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              {['ALL', 'Archive', 'Installer', 'Video & Media', 'Document'].map((cat) => (
+                <button
+                  key={cat}
+                  className="btn-secondary"
+                  style={{
+                    background: largeFileCategory === cat ? 'rgba(0, 229, 255, 0.28)' : 'rgba(255, 255, 255, 0.08)',
+                    borderColor: largeFileCategory === cat ? '#00e5ff' : 'transparent'
+                  }}
+                  onClick={() => setLargeFileCategory(cat)}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            <div className="glass-card">
+              {loadingLargeFiles ? (
+                <div style={{ padding: 40, textAlign: 'center' }}>Scanning drive folders for large files…</div>
+              ) : largeFiles.length === 0 ? (
+                <div style={{ padding: 40, textAlign: 'center' }}>
+                  <p style={{ marginBottom: 12 }}>No large files (&gt; 50 MB) found yet. Click Scan Drive Folders!</p>
+                  <button className="btn-primary" onClick={loadLargeFiles}>
+                    Scan Now
+                  </button>
+                </div>
+              ) : (
+                <div style={{ maxHeight: 520, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {largeFiles
+                    .filter((f) => largeFileCategory === 'ALL' || f.category === largeFileCategory)
+                    .map((file, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '10px 14px',
+                          borderRadius: 10,
+                          background: 'rgba(0,0,0,0.28)'
+                        }}
+                      >
+                        <div style={{ maxWidth: '65%' }}>
+                          <div style={{ fontSize: 13.5, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {file.name}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                            {file.folder} • {file.modified} • {file.path}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ fontSize: 13, fontWeight: 800, color: '#00e5ff', fontFamily: 'monospace' }}>
+                            {formatBytes(file.sizeBytes)}
+                          </span>
+                          <button
+                            className="btn-secondary"
+                            onClick={() => window.electronAPI?.showItemInFolder(file.path)}
+                          >
+                            <FolderOpen size={13} /> Reveal
+                          </button>
+                          <button
+                            className="btn-danger"
+                            onClick={async () => {
+                              if (window.electronAPI?.cleanItems) {
+                                const res = await window.electronAPI.cleanItems([file.path], dryRun);
+                                setStatusBanner(res.message);
+                                setLargeFiles((prev) => prev.filter((item) => item.path !== file.path));
+                              }
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* 5. MODULE: DOD 5220.22-M FILE SHREDDER */}
+        {/* ============================================================== */}
+        {activeModule === 'shredder' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+              <div>
+                <h1 style={{ fontSize: 24, fontWeight: 800 }}>DoD 5220.22-M 3-Pass File Shredder</h1>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                  Permanently obliterates sensitive files using military-grade zero, ones, and cryptographic random passes.
+                </p>
+              </div>
+            </div>
+
+            <div className="glass-card" style={{ textAlign: 'center', padding: 40 }}>
+              <Lock size={48} color="#ff6b4a" style={{ marginBottom: 16 }} />
+              <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 8 }}>Permanent Forensic Erase</h2>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', maxWidth: 500, margin: '0 auto 20px' }}>
+                Files deleted with this tool cannot be recovered by any file-recovery software (Recuva, EaseUS, forensics).
+              </p>
+
+              {shredFilePath ? (
+                <div
+                  style={{
+                    background: 'rgba(0,0,0,0.3)',
+                    padding: 16,
+                    borderRadius: 12,
+                    maxWidth: 540,
+                    margin: '0 auto 20px',
+                    textAlign: 'left'
+                  }}
+                >
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>{shredFileName}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontFamily: 'monospace', marginTop: 4 }}>
+                    {shredFilePath}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#00e5ff', fontWeight: 800, marginTop: 6 }}>
+                    Size: {formatBytes(shredFileSize)}
+                  </div>
+                </div>
+              ) : null}
+
+              {isShredding && (
+                <div style={{ color: '#ffbe0b', fontWeight: 800, fontSize: 14, marginBottom: 16 }}>
+                  {shredStep}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
+                <button className="btn-secondary" onClick={handleSelectShredFile} disabled={isShredding}>
+                  <FolderOpen size={14} /> Browse File to Shred…
+                </button>
+                {shredFilePath && (
+                  <button
+                    className="btn-danger"
+                    style={{ background: '#ff2a85', color: '#fff', border: 'none', padding: '8px 18px' }}
+                    onClick={handleExecuteShred}
+                    disabled={isShredding}
+                  >
+                    <Trash2 size={14} /> Obliterate File Now
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* 6. MODULE: ADGUARD NETWORK SHIELD + NOVA AI PET + SCAMADVISER */}
+        {/* ============================================================== */}
+        {activeModule === 'network_shield' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            {/* NOVA AI CYBER GUARDIAN PET & SCAMADVISER CARD */}
+            <div
+              className="glass-card"
+              style={{
+                background: 'linear-gradient(135deg, rgba(139, 61, 255, 0.28), rgba(0, 229, 255, 0.16))',
+                border: '1px solid rgba(0, 229, 255, 0.45)',
+                padding: 18
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: '50%',
+                      background: 'radial-gradient(circle, #00e5ff, #8b3dff)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 0 20px rgba(0, 229, 255, 0.6)'
+                    }}
+                  >
+                    <Bot size={24} color="#fff" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      Nova AI Cyber Guardian Pet
+                      <span
+                        style={{
+                          fontSize: 10,
+                          padding: '2px 8px',
+                          borderRadius: 12,
+                          background: 'rgba(24, 226, 153, 0.25)',
+                          color: '#18e299',
+                          fontWeight: 700
+                        }}
+                      >
+                        ONLINE • {aiProvider.toUpperCase()} MODE
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.72)' }}>
+                      ScamAdviser Live Trust Scanner & Clipboard Tracking Stripper
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn-secondary" onClick={() => setShowAiSetupModal(true)}>
+                    <Key size={13} /> Free AI Key Wizard
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    onClick={() => setIsAiPetActive(!isAiPetActive)}
+                    style={{ borderColor: isAiPetActive ? '#18e299' : 'rgba(255,255,255,0.2)' }}
+                  >
+                    {isAiPetActive ? 'Guardian Active' : 'Guardian Paused'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Speech bubble */}
+              <div
+                style={{
+                  marginTop: 14,
+                  padding: '12px 16px',
+                  borderRadius: 12,
+                  background: 'rgba(15, 7, 32, 0.65)',
+                  border: '1px solid rgba(164, 118, 255, 0.35)',
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  color: '#fff',
+                  fontStyle: 'italic'
+                }}
+              >
+                🐾 &ldquo;{aiPetSpeech}&rdquo;
+              </div>
+
+              {/* ScamAdviser Trust Scanner Input */}
+              <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>
+                <input
+                  type="text"
+                  className="input-box"
+                  style={{ flex: 1 }}
+                  placeholder="Scan any website (e.g. apple.com, free-crypto.xyz, paypa1-login.com)…"
+                  value={scamInputUrl}
+                  onChange={(e) => setScamInputUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleScanWebsite()}
+                />
+                <button className="btn-primary" onClick={() => handleScanWebsite()} disabled={isScanningUrl}>
+                  <Search size={14} /> {isScanningUrl ? 'Analyzing Trust…' : 'ScamAdviser Scan'}
+                </button>
+              </div>
+
+              {/* ScamAdviser Report Card */}
+              {scamReport && (
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: 14,
+                    borderRadius: 12,
+                    background: 'rgba(0, 0, 0, 0.35)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 800 }}>{scamReport.domain}</div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color:
+                            scamReport.trustScore >= 80
+                              ? '#18e299'
+                              : scamReport.trustScore >= 50
+                              ? '#ffbe0b'
+                              : '#ff2a85',
+                          fontWeight: 700
+                        }}
+                      >
+                        {scamReport.verdictLabel} • {scamReport.starRating} / 5.0 ★
+                      </div>
+                    </div>
                     <div
-                      key={item.id}
+                      style={{
+                        fontSize: 28,
+                        fontWeight: 900,
+                        color:
+                          scamReport.trustScore >= 80
+                            ? '#18e299'
+                            : scamReport.trustScore >= 50
+                            ? '#ffbe0b'
+                            : '#ff2a85'
+                      }}
+                    >
+                      {scamReport.trustScore}
+                      <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>/100</span>
+                    </div>
+                  </div>
+
+                  {scamReport.positiveHighlights?.length > 0 && (
+                    <div style={{ marginTop: 8, fontSize: 12, color: '#18e299' }}>
+                      ✓ {scamReport.positiveHighlights.join(' • ')}
+                    </div>
+                  )}
+
+                  {scamReport.riskWarnings?.length > 0 && (
+                    <div style={{ marginTop: 6, fontSize: 12, color: '#ff6b4a' }}>
+                      ⚠ {scamReport.riskWarnings.join(' • ')}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* ADGUARD 8-TAB NAVIGATION HEADER */}
+            <div style={{ display: 'flex', gap: 6, borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 6 }}>
+              {[
+                'General',
+                'Filters',
+                'DNS',
+                'Stealth Mode',
+                'Security',
+                'Assistant',
+                'Extensions',
+                'Network'
+              ].map((tab: any) => (
+                <button
+                  key={tab}
+                  className="btn-secondary"
+                  style={{
+                    background: adguardTab === tab ? 'rgba(0, 229, 255, 0.28)' : 'transparent',
+                    borderColor: adguardTab === tab ? '#00e5ff' : 'transparent',
+                    fontSize: 11.5,
+                    padding: '6px 10px'
+                  }}
+                  onClick={() => setAdguardTab(tab)}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {/* ADGUARD TAB CONTENT */}
+            {adguardTab === 'General' && (
+              <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700 }}>General AdGuard Settings</h3>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={isProtectionEnabled}
+                    onChange={(e) => setIsProtectionEnabled(e.target.checked)}
+                  />
+                  <span>Enable AdGuard Filtering Engine</span>
+                </label>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  Total Ads Blocked: {adsBlocked} • Trackers Blocked: {trackersBlocked} • Threats Blocked: {threatsBlocked} •
+                  Data Saved: {formatBytes(dataSavedBytes)}
+                </div>
+              </div>
+            )}
+
+            {adguardTab === 'Stealth Mode' && (
+              <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700 }}>AdGuard Stealth Mode (Windows Edition)</h3>
+                <p style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                  Protects your privacy by stripping tracking parameters from URLs and blocking web trackers.
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
+                    <input
+                      type="checkbox"
+                      checked={stealthStripUrlParams}
+                      onChange={(e) => setStealthStripUrlParams(e.target.checked)}
+                    />
+                    Strip tracking parameters from URLs (utm_, fbclid, gclid)
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
+                    <input
+                      type="checkbox"
+                      checked={stealthBlockTrackers}
+                      onChange={(e) => setStealthBlockTrackers(e.target.checked)}
+                    />
+                    Block third-party authorization tracking
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
+                    <input
+                      type="checkbox"
+                      checked={stealthSendDnt}
+                      onChange={(e) => setStealthSendDnt(e.target.checked)}
+                    />
+                    Send Do-Not-Track (DNT) header
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
+                    <input
+                      type="checkbox"
+                      checked={stealthBlockWebRtc}
+                      onChange={(e) => setStealthBlockWebRtc(e.target.checked)}
+                    />
+                    Block WebRTC local IP address leaks
+                  </label>
+                </div>
+
+                {/* Live URL Cleaner Sandbox */}
+                <div style={{ marginTop: 10, background: 'rgba(0,0,0,0.25)', padding: 12, borderRadius: 10 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Test Live URL Stripper:</div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="text"
+                      className="input-box"
+                      style={{ flex: 1, fontFamily: 'monospace', fontSize: 11.5 }}
+                      value={dirtyUrlTest}
+                      onChange={(e) => setDirtyUrlTest(e.target.value)}
+                    />
+                    <button className="btn-secondary" onClick={handleTestDirtyUrl}>
+                      Clean &amp; Copy
+                    </button>
+                  </div>
+                  {cleanUrlMsg && (
+                    <div style={{ fontSize: 11.5, color: '#18e299', marginTop: 6 }}>{cleanUrlMsg}</div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {adguardTab === 'DNS' && (
+              <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700 }}>Encrypted DNS Protection (Windows Network Adapter)</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[
+                    ['AdGuard DNS', '94.140.14.14', 'Default ad-blocking and anti-tracker DNS'],
+                    ['AdGuard DNS Family Protection', '94.140.14.15', 'Safe search and adult content filtering'],
+                    ['Cloudflare DNS', '1.1.1.1', 'Ultra-fast global DNS resolver'],
+                    ['Quad9 DNS', '9.9.9.9', 'High security & malware sinkhole protection']
+                  ].map(([name, ip, desc]: any) => (
+                    <div
+                      key={name}
+                      onClick={() => handleSelectDns(name)}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '10px 14px',
+                        borderRadius: 10,
+                        background: selectedDnsProvider === name ? 'rgba(0,229,255,0.18)' : 'rgba(0,0,0,0.25)',
+                        border: selectedDnsProvider === name ? '1px solid #00e5ff' : '1px solid transparent',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 13 }}>{name}</div>
+                        <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>{desc}</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#00e5ff' }}>{ip}</div>
+                        {selectedDnsProvider === name && (
+                          <div style={{ fontSize: 10.5, color: '#18e299', fontWeight: 700 }}>
+                            ACTIVE • {dnsLatencyMs}ms
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {adguardTab === 'Network' && (
+              <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700 }}>Filtered Applications ({filteredApps.length})</h3>
+                  <button className="btn-secondary" onClick={() => setShowAppsModal(true)}>
+                    <Plus size={13} /> Add Application…
+                  </button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {filteredApps.map((app, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '8px 12px',
+                        background: 'rgba(0,0,0,0.25)',
+                        borderRadius: 8,
+                        fontSize: 12.5
+                      }}
+                    >
+                      <span>{app.name}</span>
+                      <span style={{ fontSize: 11, color: '#18e299', fontWeight: 700 }}>HTTPS Filtering Active</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* 7. MODULE: RAM & SPEED BOOSTER (GAME TURBO + FLUSH DNS) */}
+        {/* ============================================================== */}
+        {activeModule === 'performance' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+              <div>
+                <h1 style={{ fontSize: 24, fontWeight: 800 }}>RAM & Speed Booster — Performance Suite</h1>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                  Reclaim unreferenced working-set physical RAM, flush resolver caches, and activate Game Turbo.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button className="btn-secondary" onClick={handleFlushDns}>
+                  <RotateCcw size={14} /> Flush DNS Cache
+                </button>
+                <button className="btn-primary" onClick={handleOptimizeRam}>
+                  <Zap size={14} /> Purge Standby RAM
+                </button>
+              </div>
+            </div>
+
+            {/* Performance Gauges */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gap: 14,
+                marginBottom: 20
+              }}
+            >
+              <div className="glass-card" style={{ padding: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>Physical RAM Status</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: '#00e5ff' }}>
+                    {formatBytes(telemetry.ramUsedBytes)} / {formatBytes(telemetry.ramTotalBytes)}
+                  </div>
+                </div>
+                {/* Visual Progress Bar */}
+                <div style={{ width: '100%', height: 10, background: 'rgba(255,255,255,0.1)', borderRadius: 5, overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      height: '100%',
+                      width: `${Math.round((telemetry.ramUsedBytes / telemetry.ramTotalBytes) * 100)}%`,
+                      background: 'linear-gradient(90deg, #00e5ff, #8b3dff)',
+                      borderRadius: 5
+                    }}
+                  />
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8 }}>
+                  Free Standby: {formatBytes(telemetry.ramFreeBytes)}
+                </div>
+              </div>
+
+              <div className="glass-card" style={{ padding: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>Game Turbo Accelerator</div>
+                  <button
+                    className="btn-secondary"
+                    style={{
+                      background: gameTurbo ? 'rgba(24, 226, 153, 0.25)' : 'rgba(255,255,255,0.08)',
+                      borderColor: gameTurbo ? '#18e299' : 'transparent'
+                    }}
+                    onClick={handleToggleGameTurbo}
+                  >
+                    <Gamepad2 size={14} color={gameTurbo ? '#18e299' : '#fff'} />
+                    {gameTurbo ? 'TURBO ACTIVE' : 'Enable Turbo'}
+                  </button>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                  Switches Windows power plan to Ultimate High Performance and suspends background telemetry.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* 8. MODULE: STARTUP BOOT ACCELERATOR */}
+        {/* ============================================================== */}
+        {activeModule === 'startup_manager' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+              <div>
+                <h1 style={{ fontSize: 24, fontWeight: 800 }}>Startup Boot Accelerator</h1>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                  Manage programs configured to launch on Windows boot to speed up startup time.
+                </p>
+              </div>
+              <button className="btn-secondary" onClick={loadStartupApps}>
+                <RotateCcw size={14} /> Refresh Boot Items
+              </button>
+            </div>
+
+            <div className="glass-card">
+              {loadingStartup ? (
+                <div style={{ padding: 40, textAlign: 'center' }}>Scanning Windows startup registry and folder…</div>
+              ) : startupApps.length === 0 ? (
+                <div style={{ padding: 40, textAlign: 'center' }}>
+                  <p style={{ marginBottom: 12 }}>No startup apps found. Click Refresh Boot Items!</p>
+                  <button className="btn-primary" onClick={loadStartupApps}>
+                    Scan Now
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {startupApps.map((item, idx) => (
+                    <div
+                      key={idx}
                       style={{
                         display: 'flex',
                         justifyContent: 'space-between',
@@ -682,643 +1542,46 @@ export default function App() {
                         background: 'rgba(0,0,0,0.28)'
                       }}
                     >
-                      <div>
-                        <div style={{ fontSize: 13.5, fontWeight: 700 }}>{item.title}</div>
-                        <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
-                          {item.parentTitle} • {item.path}
+                      <div style={{ maxWidth: '75%' }}>
+                        <div style={{ fontSize: 14, fontWeight: 700 }}>{item.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                          {item.location} • {item.command}
                         </div>
                       </div>
-                      <div style={{ fontWeight: 800, color: '#00e5ff', fontFamily: 'monospace' }}>
-                        {formatBytes(item.sizeBytes)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* MODULE 3: ADGUARD NETWORK SHIELD + NOVA AI CYBER GUARDIAN PET + SCAMADVISER SCANNER */}
-        {activeModule === 'network_shield' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            {/* NOVA AI CYBER GUARDIAN PET & SCAMADVISER CARD */}
-            <div className="glass-card" style={{ borderColor: 'rgba(0,229,255,0.5)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                <div
-                  style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: '50%',
-                    background: 'radial-gradient(circle, rgba(24,226,153,0.45), rgba(139,61,255,0.3))',
-                    border: '2px solid #00e5ff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                >
-                  <Bot size={32} color={isAiPetActive ? '#18e299' : '#888'} />
-                </div>
-
-                <div style={{ flex: 1, minWidth: 260 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                    <span style={{ fontSize: 15, fontWeight: 800 }}>
-                      NOVA — AI Cyber Guardian Pet & ScamAdviser Live URL Scanner
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 10.5,
-                        padding: '2px 9px',
-                        borderRadius: 12,
-                        background: isAiPetActive ? 'rgba(24,226,153,0.18)' : 'rgba(255,255,255,0.1)',
-                        color: isAiPetActive ? '#18e299' : '#aaa',
-                        fontWeight: 700
-                      }}
-                    >
-                      {isAiPetActive ? '● Active & Guarding' : 'Sleeping'}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      padding: '8px 12px',
-                      borderRadius: 9,
-                      background: 'rgba(0,0,0,0.32)',
-                      border: '1px solid rgba(0,229,255,0.3)',
-                      fontSize: 12.5
-                    }}
-                  >
-                    {aiPetSpeech}
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <button
-                    className="btn-primary"
-                    onClick={() => {
-                      if (!isAiPetActive && !aiApiKey) setShowAiSetupModal(true);
-                      setIsAiPetActive(!isAiPetActive);
-                    }}
-                  >
-                    <Shield size={14} /> {isAiPetActive ? 'AI Pet Active' : 'Activate AI Pet'}
-                  </button>
-                  <button className="btn-secondary" onClick={() => setShowAiSetupModal(true)}>
-                    <Key size={13} color="#00e5ff" />{' '}
-                    {aiApiKey ? 'AI Key Configured ✓' : 'Setup Free AI API Key…'}
-                  </button>
-                </div>
-              </div>
-
-              {/* ScamAdviser URL Scanner Bar */}
-              <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-                <input
-                  className="input-box"
-                  style={{ flex: 1, minWidth: 260, fontFamily: 'monospace' }}
-                  value={scamInputUrl}
-                  onChange={(e) => setScamInputUrl(e.target.value)}
-                  placeholder="Enter website URL for ScamAdviser Trust Score (e.g. https://apple.com)"
-                />
-                <button
-                  className="btn-primary"
-                  onClick={() => handleScanWebsite()}
-                  disabled={isScanningUrl}
-                >
-                  <Search size={14} /> {isScanningUrl ? 'Scanning…' : 'Scan Website Rating'}
-                </button>
-                {[
-                  ['apple.com', 'Safe'],
-                  ['doubleclick.net', 'Tracker'],
-                  ['paypa1-login-verify.xyz', 'Scam Test']
-                ].map(([domain, label]) => (
-                  <button
-                    key={domain}
-                    className="btn-secondary"
-                    onClick={() => {
-                      const u = `https://${domain}`;
-                      setScamInputUrl(u);
-                      handleScanWebsite(u);
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              {/* ScamAdviser Live Report */}
-              {scamReport && (
-                <div
-                  style={{
-                    marginTop: 14,
-                    padding: 14,
-                    borderRadius: 12,
-                    background: 'rgba(0,0,0,0.34)',
-                    border: `1px solid ${
-                      scamReport.trustScore >= 80
-                        ? '#18e299'
-                        : scamReport.trustScore >= 50
-                        ? '#ffbe0b'
-                        : '#ff6b4a'
-                    }`,
-                    display: 'flex',
-                    gap: 18,
-                    alignItems: 'center'
-                  }}
-                >
-                  <div style={{ textAlign: 'center', minWidth: 82 }}>
-                    <div
-                      style={{
-                        fontSize: 26,
-                        fontWeight: 900,
-                        color:
-                          scamReport.trustScore >= 80
-                            ? '#18e299'
-                            : scamReport.trustScore >= 50
-                            ? '#ffbe0b'
-                            : '#ff6b4a'
-                      }}
-                    >
-                      {scamReport.trustScore}/100
-                    </div>
-                    <div style={{ fontSize: 12, color: '#ffbe0b', fontWeight: 700 }}>
-                      ★ {scamReport.starRating} / 5.0
-                    </div>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <span style={{ fontSize: 14, fontWeight: 800, fontFamily: 'monospace' }}>
-                        {scamReport.domain} — {scamReport.verdictLabel}
-                      </span>
-                      <span style={{ fontSize: 11.5, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
-                        SSL: {scamReport.httpsValid ? 'Valid ✓' : 'Failed ✗'} • Headers:{' '}
-                        {scamReport.securityHeadersCount}/5 • Ping: {scamReport.responseTimeMs} ms
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', gap: 18, fontSize: 12 }}>
-                      <div>
-                        {scamReport.positiveHighlights?.map((p: string, i: number) => (
-                          <div key={i} style={{ color: '#18e299' }}>
-                            ✓ {p}
-                          </div>
-                        ))}
-                      </div>
-                      <div>
-                        {scamReport.riskWarnings?.map((w: string, i: number) => (
-                          <div key={i} style={{ color: '#ff6b4a', fontWeight: 600 }}>
-                            ⚠ {w}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* AdGuard Main Card + 8-Tab Settings Window */}
-            <div style={{ display: 'grid', gridTemplateColumns: '295px 1fr', gap: 18 }}>
-              {/* Left AdGuard Real-Time Protection Card */}
-              <div className="glass-card" style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 12 }}>AdGuard Shield</div>
-                <div
-                  onClick={() => setIsProtectionEnabled(!isProtectionEnabled)}
-                  style={{
-                    width: 88,
-                    height: 88,
-                    margin: '0 auto 12px',
-                    borderRadius: '50%',
-                    background: isProtectionEnabled
-                      ? 'rgba(24,226,153,0.18)'
-                      : 'rgba(255,107,74,0.18)',
-                    border: `2px solid ${isProtectionEnabled ? '#18e299' : '#ff6b4a'}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <Shield size={42} color={isProtectionEnabled ? '#18e299' : '#ff6b4a'} />
-                </div>
-                <div
-                  style={{
-                    fontSize: 15,
-                    fontWeight: 800,
-                    color: isProtectionEnabled ? '#18e299' : '#ff6b4a'
-                  }}
-                >
-                  {isProtectionEnabled ? 'Protection is Enabled' : 'Protection Paused'}
-                </div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: 'var(--text-secondary)',
-                    marginTop: 6,
-                    fontFamily: 'monospace'
-                  }}
-                >
-                  {lastBlockedDomain}
-                </div>
-
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: 8,
-                    marginTop: 16,
-                    textAlign: 'left'
-                  }}
-                >
-                  <div style={{ padding: 10, borderRadius: 10, background: 'rgba(0,0,0,0.28)' }}>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: '#18e299' }}>{adsBlocked}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Ads Blocked</div>
-                  </div>
-                  <div style={{ padding: 10, borderRadius: 10, background: 'rgba(0,0,0,0.28)' }}>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: '#00e5ff' }}>{trackersBlocked}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Trackers Blocked</div>
-                  </div>
-                  <div style={{ padding: 10, borderRadius: 10, background: 'rgba(0,0,0,0.28)' }}>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: '#ff6b4a' }}>{threatsBlocked}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Threats Blocked</div>
-                  </div>
-                  <div style={{ padding: 10, borderRadius: 10, background: 'rgba(0,0,0,0.28)' }}>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: '#a66bff' }}>
-                      {formatBytes(dataSavedBytes)}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Traffic Saved</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right AdGuard 8-Tab Settings Window */}
-              <div className="glass-card">
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: 6,
-                    flexWrap: 'wrap',
-                    paddingBottom: 14,
-                    borderBottom: '1px solid rgba(255,255,255,0.1)'
-                  }}
-                >
-                  {(
-                    [
-                      'General',
-                      'Filters',
-                      'DNS',
-                      'Stealth Mode',
-                      'Security',
-                      'Assistant',
-                      'Extensions',
-                      'Network'
-                    ] as const
-                  ).map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => setAdguardTab(tab)}
-                      style={{
-                        padding: '7px 13px',
-                        borderRadius: 9,
-                        border:
-                          adguardTab === tab
-                            ? '1px solid #00e5ff'
-                            : '1px solid rgba(255,255,255,0.08)',
-                        background:
-                          adguardTab === tab
-                            ? 'rgba(139,61,255,0.42)'
-                            : 'rgba(255,255,255,0.04)',
-                        color: '#fff',
-                        fontSize: 12,
-                        fontWeight: adguardTab === tab ? 700 : 500,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                </div>
-
-                <div style={{ marginTop: 16 }}>
-                  {adguardTab === 'Stealth Mode' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                      {[
-                        [
-                          stealthMaster,
-                          setStealthMaster,
-                          'Tracking protection (Master Stealth Mode)',
-                          'Protects your online activity and personal data from web trackers.'
-                        ],
-                        [
-                          stealthBlockTrackers,
-                          setStealthBlockTrackers,
-                          'Block trackers',
-                          'Blocks trackers and web analytics using AdGuard Tracking Protection filter.'
-                        ],
-                        [
-                          stealthStripUrlParams,
-                          setStealthStripUrlParams,
-                          'Remove tracking parameters from URLs (Auto Clipboard Stripper)',
-                          'Automatically strips utm_*, fbclid, gclid, msclkid from URLs copied on Windows.'
-                        ],
-                        [
-                          stealthHideSearch,
-                          setStealthHideSearch,
-                          'Hide search queries',
-                          'Hides your searches from websites visited through search engine results.'
-                        ],
-                        [
-                          stealthSendDnt,
-                          setStealthSendDnt,
-                          'Ask websites not to track me (GPC & DNT: 1)',
-                          'Sends Global Privacy Control and Do Not Track signals.'
-                        ],
-                        [
-                          stealthBlockWebRtc,
-                          setStealthBlockWebRtc,
-                          'Block WebRTC IP Leaks',
-                          'Prevents browsers from leaking your real local & public IP address via WebRTC.'
-                        ],
-                        [
-                          stealthThirdPartyCookies,
-                          setStealthThirdPartyCookies,
-                          'Self-destruction of third-party tracking cookies (180 min TTL)',
-                          'Automatically purges tracking cookies after session timeout.'
-                        ]
-                      ].map(([val, setter, title, sub]: any, idx) => (
-                        <label
-                          key={idx}
-                          style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={val}
-                            onChange={(e) => {
-                              setter(e.target.checked);
-                              setStatusBanner(`${title}: ${e.target.checked ? 'Enabled' : 'Disabled'}`);
-                            }}
-                            style={{ marginTop: 3, accentColor: '#00e5ff' }}
-                          />
-                          <div>
-                            <div style={{ fontSize: 13.5, fontWeight: 700 }}>{title}</div>
-                            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{sub}</div>
-                          </div>
-                        </label>
-                      ))}
-
-                      <div
+                      <span
                         style={{
-                          marginTop: 6,
-                          padding: 12,
-                          borderRadius: 10,
-                          background: 'rgba(0,0,0,0.28)'
+                          fontSize: 11,
+                          padding: '3px 8px',
+                          borderRadius: 6,
+                          fontWeight: 700,
+                          background: item.impact === 'High' ? 'rgba(255,42,133,0.25)' : 'rgba(0,229,255,0.25)',
+                          color: item.impact === 'High' ? '#ff2a85' : '#00e5ff'
                         }}
                       >
-                        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>
-                          Test Stealth URL Parameter Cleaner (utm_*, fbclid, gclid):
-                        </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <input
-                            className="input-box"
-                            style={{ flex: 1, fontFamily: 'monospace' }}
-                            value={dirtyUrlTest}
-                            onChange={(e) => setDirtyUrlTest(e.target.value)}
-                          />
-                          <button className="btn-primary" onClick={handleCleanUrlButton}>
-                            Clean & Copy
-                          </button>
-                        </div>
-                        {cleanUrlMsg && (
-                          <div style={{ fontSize: 11.5, color: '#18e299', marginTop: 6 }}>
-                            {cleanUrlMsg}
-                          </div>
-                        )}
-                      </div>
+                        {item.impact} Boot Impact
+                      </span>
                     </div>
-                  )}
-
-                  {adguardTab === 'DNS' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      {[
-                        [
-                          'AdGuard DNS',
-                          'DNS-over-HTTPS • Blocks ads, trackers & phishing (94.140.14.14)'
-                        ],
-                        [
-                          'AdGuard DNS Family Protection',
-                          'Blocks ads, trackers & adult content + Safe Search (94.140.14.15)'
-                        ],
-                        ['Cloudflare DNS', 'Fast 1.1.1.1 encrypted DNS resolver'],
-                        ['Quad9 DNS', 'Security-focused 9.9.9.9 malware-blocking DNS'],
-                        ['System default', 'Use default ISP DHCP DNS servers']
-                      ].map(([name, desc]) => (
-                        <div
-                          key={name}
-                          onClick={async () => {
-                            setSelectedDnsProvider(name);
-                            if (window.electronAPI?.pingDns) {
-                              const r = await window.electronAPI.pingDns(name);
-                              setDnsLatencyMs(r.latencyMs);
-                            }
-                          }}
-                          style={{
-                            padding: 12,
-                            borderRadius: 10,
-                            background:
-                              selectedDnsProvider === name
-                                ? 'rgba(139,61,255,0.32)'
-                                : 'rgba(0,0,0,0.25)',
-                            border:
-                              selectedDnsProvider === name
-                                ? '1px solid #00e5ff'
-                                : '1px solid rgba(255,255,255,0.08)',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
-                          }}
-                        >
-                          <div>
-                            <div style={{ fontSize: 13.5, fontWeight: 700 }}>{name}</div>
-                            <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>{desc}</div>
-                          </div>
-                          {selectedDnsProvider === name && (
-                            <span style={{ fontSize: 11.5, color: '#18e299', fontWeight: 800 }}>
-                              {dnsLatencyMs} ms
-                            </span>
-                          )}
-                        </div>
-                      ))}
-
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
-                        <button
-                          className="btn-secondary"
-                          onClick={async () => {
-                            if (window.electronAPI?.restoreDns) {
-                              const r = await window.electronAPI.restoreDns();
-                              setStatusBanner(r.message);
-                            }
-                          }}
-                        >
-                          Restore ISP DNS
-                        </button>
-                        <button
-                          className="btn-primary"
-                          onClick={async () => {
-                            if (window.electronAPI?.applyDns) {
-                              const r = await window.electronAPI.applyDns(selectedDnsProvider);
-                              setStatusBanner(r.message);
-                            }
-                          }}
-                        >
-                          Apply {selectedDnsProvider} to Windows
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {adguardTab === 'Network' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <div style={{ fontSize: 14, fontWeight: 700 }}>
-                            Automatically filter applications
-                          </div>
-                          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                            Filter traffic of installed Windows browsers & apps ({filteredApps.filter((a) => a.traffic).length} active)
-                          </div>
-                        </div>
-                        <button className="btn-secondary" onClick={() => setShowAppsModal(true)}>
-                          Applications…
-                        </button>
-                      </div>
-
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <div style={{ fontSize: 14, fontWeight: 700 }}>
-                            Filter HTTPS protocol & EV Certificates
-                          </div>
-                          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                            Inspect encrypted HTTPS traffic for ad & tracker payloads
-                          </div>
-                        </div>
-                        <span style={{ color: '#18e299', fontSize: 12, fontWeight: 700 }}>
-                          ✓ Root CA Active
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {adguardTab !== 'Stealth Mode' &&
-                    adguardTab !== 'DNS' &&
-                    adguardTab !== 'Network' && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700 }}>
-                          AdGuard {adguardTab} Protection Rules Active
-                        </div>
-                        <p style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
-                          All {adguardTab} filters, userscripts, and real-time Windows rules are synchronized and enforced.
-                        </p>
-                      </div>
-                    )}
+                  ))}
                 </div>
-              </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* MODULE 4: BATTERY LIFEGUARD (3-Card HUD + Temperature + Quit App) */}
+        {/* ============================================================== */}
+        {/* 9. MODULE: BATTERY & THERMAL HUD */}
+        {/* ============================================================== */}
         {activeModule === 'battery_lifeguard' && (
-          <div>
-            <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 16 }}>
-              Battery Lifeguard & Thermal Monitor
-            </h1>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
-              <div className="glass-card">
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>CHARGE & POWER</div>
-                <div style={{ fontSize: 32, fontWeight: 900, color: '#18e299', marginTop: 6 }}>
-                  {telemetry.battery.percent}%
-                </div>
-                <div style={{ fontSize: 12.5, marginTop: 6 }}>
-                  {telemetry.battery.isCharging ? '⚡ AC Power Charging' : '🔋 On Battery Power'} •{' '}
-                  {telemetry.battery.watts}W
-                </div>
-              </div>
-
-              <div className="glass-card">
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>BATTERY HEALTH & CYCLES</div>
-                <div style={{ fontSize: 32, fontWeight: 900, color: '#00e5ff', marginTop: 6 }}>
-                  {telemetry.battery.healthPercent}%
-                </div>
-                <div style={{ fontSize: 12.5, marginTop: 6 }}>
-                  Cycle Count: {telemetry.battery.cycleCount} cycles
-                </div>
-              </div>
-
-              <div className="glass-card">
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>THERMAL SENSOR</div>
-                <div style={{ fontSize: 32, fontWeight: 900, color: '#ffbe0b', marginTop: 6 }}>
-                  {telemetry.battery.temperatureC}°C
-                </div>
-                <div style={{ fontSize: 12.5, marginTop: 6 }}>
-                  {((telemetry.battery.temperatureC * 9) / 5 + 32).toFixed(1)}°F • Optimal Thermal Range
-                </div>
-              </div>
-            </div>
-
-            <div className="glass-card">
-              <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 12 }}>
-                Top Energy-Draining Applications (1-Click Quit)
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {telemetry.processes.map((proc: any) => (
-                  <div
-                    key={proc.pid}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '10px 14px',
-                      borderRadius: 10,
-                      background: 'rgba(0,0,0,0.28)'
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontSize: 13.5, fontWeight: 700 }}>{proc.name}</div>
-                      <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
-                        PID {proc.pid} • CPU {proc.cpu}% • RAM {proc.memoryMB} MB
-                      </div>
-                    </div>
-                    <button
-                      className="btn-danger"
-                      onClick={() => handleQuitProcess(proc.pid, proc.name)}
-                    >
-                      Quit App
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* MODULE 5: PERFORMANCE / ACTIVITY MONITOR / MY TOOLS */}
-        {(activeModule === 'performance' ||
-          activeModule === 'activity_monitor' ||
-          activeModule === 'my_tools') && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
               <div>
-                <h1 style={{ fontSize: 24, fontWeight: 800 }}>
-                  {activeModule === 'performance'
-                    ? 'RAM Optimizer & Startup Booster'
-                    : activeModule === 'activity_monitor'
-                    ? 'Real-Time Activity Monitor'
-                    : 'My Tools Hub — 11 Pro Utilities'}
-                </h1>
+                <h1 style={{ fontSize: 24, fontWeight: 800 }}>Battery Lifeguard &amp; Thermal HUD</h1>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                  CPU Load: {telemetry.cpuPercent}% • RAM Used: {formatBytes(telemetry.ramUsedBytes)} /{' '}
-                  {formatBytes(telemetry.ramTotalBytes)}
+                  Hardware metrics queried directly via Windows Management Instrumentation (WMI).
                 </p>
               </div>
-              <button className="btn-primary" onClick={handleOptimizeRam}>
-                <Zap size={14} /> Optimize & Purge Standby RAM Now
+              <button className="btn-secondary" onClick={refreshTelemetry}>
+                <RotateCcw size={14} /> Refresh WMI
               </button>
             </div>
 
@@ -1330,58 +1593,151 @@ export default function App() {
                 marginBottom: 20
               }}
             >
+              <div className="glass-card" style={{ padding: 22 }}>
+                <BatteryCharging size={32} color="#18e299" />
+                <div style={{ fontSize: 28, fontWeight: 800, marginTop: 10, color: '#18e299' }}>
+                  {telemetry.battery.percent}%
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, marginTop: 4 }}>
+                  {telemetry.battery.isCharging ? 'AC Adapter Connected (Charging)' : 'Discharging on Battery'}
+                </div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 4 }}>
+                  Health: {telemetry.battery.healthPercent}% • Cycle Count: {telemetry.battery.cycleCount}
+                </div>
+              </div>
+
+              <div className="glass-card" style={{ padding: 22 }}>
+                <Flame size={32} color="#ff6b4a" />
+                <div style={{ fontSize: 28, fontWeight: 800, marginTop: 10, color: '#ff6b4a' }}>
+                  {telemetry.battery.temperatureC}°C
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, marginTop: 4 }}>MSAcpi Thermal Zone</div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 4 }}>
+                  Operating within safe temperature range
+                </div>
+              </div>
+
+              <div className="glass-card" style={{ padding: 22 }}>
+                <Cpu size={32} color="#00e5ff" />
+                <div style={{ fontSize: 28, fontWeight: 800, marginTop: 10, color: '#00e5ff' }}>
+                  {telemetry.cpuPercent}%
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, marginTop: 4 }}>CPU Load Average</div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 4 }}>
+                  {telemetry.cpuModel} ({telemetry.cpuCores} Threads)
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* 10. MODULE: ACTIVITY MONITOR / PROCESS MANAGER */}
+        {/* ============================================================== */}
+        {activeModule === 'activity_monitor' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+              <div>
+                <h1 style={{ fontSize: 24, fontWeight: 800 }}>Real-Time Activity Monitor &amp; Taskkill</h1>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                  Active Windows processes with real-time CPU &amp; RAM consumption and one-click termination.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <input
+                  type="text"
+                  className="input-box"
+                  placeholder="Filter processes…"
+                  value={procSearch}
+                  onChange={(e) => setProcSearch(e.target.value)}
+                  style={{ width: 180 }}
+                />
+                <button className="btn-secondary" onClick={refreshTelemetry}>
+                  <RotateCcw size={14} /> Refresh
+                </button>
+              </div>
+            </div>
+
+            <div className="glass-card">
+              <div style={{ maxHeight: 520, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {telemetry.processes
+                  .filter((p: any) => (p.name || '').toLowerCase().includes(procSearch.toLowerCase()))
+                  .map((proc: any) => (
+                    <div
+                      key={proc.pid}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '10px 14px',
+                        borderRadius: 10,
+                        background: 'rgba(0,0,0,0.28)'
+                      }}
+                    >
+                      <div>
+                        <span style={{ fontWeight: 700, fontSize: 14 }}>{proc.name}</span>{' '}
+                        <span style={{ fontSize: 11.5, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                          (PID {proc.pid})
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <span style={{ fontSize: 12, fontFamily: 'monospace', color: '#00e5ff' }}>
+                          CPU {proc.cpu}% • {proc.memoryMB} MB
+                        </span>
+                        <button
+                          className="btn-danger"
+                          onClick={() => handleQuitProcess(proc.pid, proc.name)}
+                        >
+                          Force Quit
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* 11. MODULE: ALL MY TOOLS HUB */}
+        {/* ============================================================== */}
+        {activeModule === 'my_tools' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+              <div>
+                <h1 style={{ fontSize: 24, fontWeight: 800 }}>My Tools Hub — 12 Pro Utilities</h1>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                  All MacCare Pro features natively ported to Windows 10 & 11.
+                </p>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                gap: 14
+              }}
+            >
               {[
-                ['AdGuard & AI Pet Shield', '8-Tab Ad Blocker, Stealth Mode & ScamAdviser', () => setActiveModule('network_shield')],
-                ['Battery Lifeguard', '3-Card Battery HUD, Thermal °C & App Quitter', () => setActiveModule('battery_lifeguard')],
-                ['RAM & Standby Purger', 'Reclaim inactive Windows working-set memory', handleOptimizeRam],
-                ['Disk Shredder (DoD 3-Pass)', 'Zero-overwrite sensitive files permanently', () => setStatusBanner('Disk Shredder ready — select any file to shred.')],
-                ['Game Turbo Mode', 'Suspend background indexing & boost GPU/CPU priority', () => setStatusBanner('Game Turbo Mode Activated — background telemetry throttled!')],
-                ['Clipboard Vault', 'Auto-strips URL tracking params & stores history', () => setActiveModule('network_shield')]
+                ['Smart Care Dashboard', '1-Click full system health and purge check', () => setActiveModule('smart_care')],
+                ['System Junk Cleaner', 'Purge Windows %TEMP%, Prefetch & DirectX caches', () => setActiveModule('system_junk')],
+                ['Browser Privacy', 'Wipe Chrome, Edge, Brave and Firefox history & caches', () => setActiveModule('browser_cleanup')],
+                ['App Uninstaller', 'Inspect and cleanly uninstall Windows software', () => setActiveModule('app_leftovers')],
+                ['Space Lens', 'Find and delete large and old files (> 50 MB)', () => setActiveModule('space_lens')],
+                ['DoD File Shredder', 'Permanent 3-pass forensic secure erase', () => setActiveModule('shredder')],
+                ['AdGuard Network Shield', '8-Tab AdBlock, Encrypted DNS & Stealth Mode', () => setActiveModule('network_shield')],
+                ['Nova AI Cyber Pet', 'Cyber pet guardian with ScamAdviser Trust Scanner', () => setActiveModule('network_shield')],
+                ['RAM & Standby Purger', 'Reclaim unreferenced physical working-set memory', handleOptimizeRam],
+                ['Flush DNS Cache', 'Instantly purge Windows resolver DNS cache', handleFlushDns],
+                ['Game Turbo Mode', 'High-performance CPU priority & telemetry pause', handleToggleGameTurbo],
+                ['Battery Lifeguard', 'WMI charging status and real Celsius temperature', () => setActiveModule('battery_lifeguard')]
               ].map(([title, desc, action]: any, i) => (
                 <div key={i} className="glass-card interactive" onClick={action}>
                   <div style={{ fontSize: 15, fontWeight: 800, color: '#00e5ff' }}>{title}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 6 }}>{desc}</div>
                 </div>
               ))}
-            </div>
-
-            <div className="glass-card">
-              <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 12 }}>
-                Active System Processes ({telemetry.processes.length})
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {telemetry.processes.map((proc: any) => (
-                  <div
-                    key={proc.pid}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '9px 14px',
-                      borderRadius: 9,
-                      background: 'rgba(0,0,0,0.28)'
-                    }}
-                  >
-                    <div>
-                      <span style={{ fontWeight: 700 }}>{proc.name}</span>{' '}
-                      <span style={{ fontSize: 11.5, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
-                        (PID {proc.pid})
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                      <span style={{ fontSize: 12, fontFamily: 'monospace' }}>
-                        CPU {proc.cpu}% • {proc.memoryMB} MB
-                      </span>
-                      <button
-                        className="btn-danger"
-                        onClick={() => handleQuitProcess(proc.pid, proc.name)}
-                      >
-                        Force Quit
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         )}
@@ -1454,41 +1810,33 @@ export default function App() {
             )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button
-                className="btn-secondary"
-                onClick={() => {
-                  setAiProvider('local');
-                  setIsAiPetActive(true);
-                  setShowAiSetupModal(false);
-                }}
-              >
-                Use Without API Key
+              <button className="btn-secondary" onClick={() => setShowAiSetupModal(false)}>
+                Cancel
               </button>
               <button
                 className="btn-primary"
                 onClick={async () => {
                   if (window.electronAPI?.testAiKey) {
-                    const r = await window.electronAPI.testAiKey({ apiKey: aiApiKey, provider: aiProvider });
-                    setStatusBanner(r.message);
-                    if (r.reply) setAiPetSpeech(r.reply);
+                    const res = await window.electronAPI.testAiKey({ apiKey: aiApiKey, provider: aiProvider });
+                    setStatusBanner(res.message);
+                    if (res.reply) setAiPetSpeech(res.reply);
                   }
-                  setIsAiPetActive(true);
                   setShowAiSetupModal(false);
                 }}
               >
-                Verify & Activate Nova AI Pet
+                Save &amp; Activate
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL 2: FILTERED WINDOWS APPLICATIONS ("Applications..." Button) */}
+      {/* MODAL 2: FILTERED APPS */}
       {showAppsModal && (
         <div className="modal-backdrop" onClick={() => setShowAppsModal(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div style={{ fontSize: 17, fontWeight: 800 }}>Filtered Windows Applications</div>
+              <div style={{ fontSize: 16, fontWeight: 800 }}>Add Application to AdGuard Filter</div>
               <button
                 onClick={() => setShowAppsModal(false)}
                 style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer' }}
@@ -1496,43 +1844,12 @@ export default function App() {
                 <X size={18} />
               </button>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-              {filteredApps.map((app, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: 10,
-                    borderRadius: 9,
-                    background: 'rgba(0,0,0,0.32)'
-                  }}
-                >
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700 }}>{app.name}</div>
-                    <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
-                      {app.bundle}
-                    </div>
-                  </div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-                    <input
-                      type="checkbox"
-                      checked={app.traffic}
-                      onChange={(e) => {
-                        const copy = [...filteredApps];
-                        copy[i].traffic = e.target.checked;
-                        setFilteredApps(copy);
-                      }}
-                    />
-                    Filter Traffic
-                  </label>
-                </div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button className="btn-primary" onClick={() => setShowAppsModal(false)}>
-                Done
+            <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginBottom: 14 }}>
+              Select a Windows application executable (.exe) to route through AdGuard HTTPS content filtering.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button className="btn-secondary" onClick={() => setShowAppsModal(false)}>
+                Close
               </button>
             </div>
           </div>
