@@ -42,6 +42,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   scanWebsiteTrust: (payload) => ipcRenderer.invoke('scan-website-trust', payload),
   testAiKey: (payload) => ipcRenderer.invoke('test-ai-key', payload),
   cleanTrackingUrl: (url) => ipcRenderer.invoke('clean-tracking-url', { url }),
+  getActiveDns: () => ipcRenderer.invoke('get-active-dns'),
+  verifyDnsSinkhole: () => ipcRenderer.invoke('verify-dns-sinkhole'),
   pingDns: (provider) => ipcRenderer.invoke('ping-dns', { provider }),
   applyDns: (provider) => ipcRenderer.invoke('apply-dns', { provider }),
   restoreDns: () => ipcRenderer.invoke('restore-dns'),

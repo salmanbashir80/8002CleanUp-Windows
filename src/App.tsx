@@ -284,9 +284,29 @@ export default function App() {
   );
   const [cleanUrlMsg, setCleanUrlMsg] = useState<string | null>(null);
 
-  // DNS Options
+  // Real Windows Network Adapter DNS State
+  const [activeSystemDns, setActiveSystemDns] = useState<{
+    adapter: string;
+    dnsServers: string[];
+    activeProvider: string;
+    isAdGuard: boolean;
+  }>({
+    adapter: 'Ethernet',
+    dnsServers: [],
+    activeProvider: 'Detecting...',
+    isAdGuard: false
+  });
   const [selectedDnsProvider, setSelectedDnsProvider] = useState('AdGuard DNS');
   const [dnsLatencyMs, setDnsLatencyMs] = useState<number>(14);
+  const [isApplyingDns, setIsApplyingDns] = useState(false);
+  const [isTestingSinkhole, setIsTestingSinkhole] = useState(false);
+  const [sinkholeTestResult, setSinkholeTestResult] = useState<{
+    tested: boolean;
+    systemDnsResult: string;
+    systemBlocked: boolean;
+    adguardServerResult: string;
+    statusText: string;
+  } | null>(null);
 
   // Filtered Windows Applications
   const [filteredApps, setFilteredApps] = useState([
@@ -541,16 +561,65 @@ export default function App() {
     }
   };
 
+  const refreshActiveDns = async () => {
+    if ((window as any).electronAPI?.getActiveDns) {
+      const res = await (window as any).electronAPI.getActiveDns();
+      if (res && res.dnsServers) {
+        setActiveSystemDns(res);
+      }
+    }
+  };
+
+  useEffect(() => {
+    refreshActiveDns();
+  }, []);
+
   const handleSelectDns = async (name: string) => {
     setSelectedDnsProvider(name);
-    if (window.electronAPI?.pingDns) {
-      const res = await window.electronAPI.pingDns(name);
+    if ((window as any).electronAPI?.pingDns) {
+      const res = await (window as any).electronAPI.pingDns(name);
       setDnsLatencyMs(res.latencyMs);
     }
-    if (window.electronAPI?.applyDns) {
-      const applyRes = await window.electronAPI.applyDns(name);
-      setStatusBanner(applyRes.message);
+  };
+
+  const handleApplyDns = async (name: string) => {
+    setIsApplyingDns(true);
+    setSelectedDnsProvider(name);
+    setStatusBanner(`Applying ${name} to Windows network adapter (Please allow Windows Administrator UAC prompt)...`);
+    if ((window as any).electronAPI?.applyDns) {
+      const res = await (window as any).electronAPI.applyDns(name);
+      setStatusBanner(res.message);
+      await refreshActiveDns();
     }
+    setIsApplyingDns(false);
+  };
+
+  const handleRestoreDns = async () => {
+    setIsApplyingDns(true);
+    setStatusBanner('Restoring Windows network adapter to automatic DHCP / ISP DNS...');
+    if ((window as any).electronAPI?.restoreDns) {
+      const res = await (window as any).electronAPI.restoreDns();
+      setStatusBanner(res.message);
+      await refreshActiveDns();
+    }
+    setIsApplyingDns(false);
+  };
+
+  const handleRunSinkholeTest = async () => {
+    setIsTestingSinkhole(true);
+    setStatusBanner('Testing live DNS sinkhole resolution against ad tracking domain doubleclick.net...');
+    if ((window as any).electronAPI?.verifyDnsSinkhole) {
+      const res = await (window as any).electronAPI.verifyDnsSinkhole();
+      setSinkholeTestResult({
+        tested: true,
+        systemDnsResult: res.systemDnsResult,
+        systemBlocked: res.systemBlocked,
+        adguardServerResult: res.adguardServerResult,
+        statusText: res.statusText
+      });
+      setStatusBanner(res.statusText);
+    }
+    setIsTestingSinkhole(false);
   };
 
   // Load Installed Windows Apps
@@ -919,7 +988,7 @@ export default function App() {
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 6 }}>
-            <span style={{ color: 'var(--text-secondary)' }}>v2.2.0 Pro</span>
+            <span style={{ color: 'var(--text-secondary)' }}>v2.2.1 Pro</span>
             <span style={{ color: '#18e299', fontWeight: 600 }}>● Live Engine</span>
           </div>
           <button
@@ -2427,44 +2496,207 @@ export default function App() {
             )}
 
             {adguardTab === 'DNS' && (
-              <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700 }}>Encrypted DNS Protection (Windows Network Adapter)</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {[
-                    ['AdGuard DNS', '94.140.14.14', 'Default ad-blocking and anti-tracker DNS'],
-                    ['AdGuard DNS Family Protection', '94.140.14.15', 'Safe search and adult content filtering'],
-                    ['Cloudflare DNS', '1.1.1.1', 'Ultra-fast global DNS resolver'],
-                    ['Quad9 DNS', '9.9.9.9', 'High security & malware sinkhole protection']
-                  ].map(([name, ip, desc]: any) => (
-                    <div
-                      key={name}
-                      onClick={() => handleSelectDns(name)}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '10px 14px',
-                        borderRadius: 10,
-                        background: selectedDnsProvider === name ? 'rgba(0,229,255,0.18)' : 'rgba(0,0,0,0.25)',
-                        border: selectedDnsProvider === name ? '1px solid #00e5ff' : '1px solid transparent',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: 13 }}>{name}</div>
-                        <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>{desc}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {/* 1. Real-Time Physical Adapter DNS Status Card */}
+                <div
+                  className="glass-card"
+                  style={{
+                    padding: '16px 20px',
+                    borderLeft: activeSystemDns.isAdGuard ? '4px solid #00e676' : '4px solid #ffab00',
+                    background: 'linear-gradient(145deg, rgba(16, 20, 32, 0.9), rgba(10, 12, 20, 0.95))'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Shield size={18} color={activeSystemDns.isAdGuard ? '#00e676' : '#ffab00'} />
+                        <span style={{ fontSize: 15, fontWeight: 700 }}>Real-Time Windows DNS Live Audit</span>
+                        <span
+                          className="metric-pill"
+                          style={{
+                            color: activeSystemDns.isAdGuard ? '#00e676' : '#ffab00',
+                            borderColor: activeSystemDns.isAdGuard ? 'rgba(0,230,118,0.35)' : 'rgba(255,171,0,0.35)'
+                          }}
+                        >
+                          {activeSystemDns.isAdGuard ? '● AdGuard Active & Filtering' : '○ ISP / DHCP Default'}
+                        </span>
                       </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#00e5ff' }}>{ip}</div>
-                        {selectedDnsProvider === name && (
-                          <div style={{ fontSize: 10.5, color: '#18e299', fontWeight: 700 }}>
-                            ACTIVE • {dnsLatencyMs}ms
-                          </div>
-                        )}
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
+                        Active Hardware Adapter: <strong style={{ color: '#fff' }}>{activeSystemDns.adapter}</strong> • Active DNS IPs: <strong style={{ color: '#00f2fe', fontFamily: 'monospace' }}>{activeSystemDns.dnsServers.length > 0 ? activeSystemDns.dnsServers.join(', ') : '192.168.18.1 (Default)'}</strong>
                       </div>
                     </div>
-                  ))}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn-secondary" onClick={refreshActiveDns} disabled={isApplyingDns} style={{ padding: '6px 12px', fontSize: 12 }}>
+                        <RotateCcw size={13} /> Re-check Windows Adapter
+                      </button>
+                    </div>
+                  </div>
                 </div>
+
+                {/* 2. DNS Providers Selection List */}
+                <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <h3 style={{ fontSize: 16, fontWeight: 700 }}>Encrypted DNS Resolver Profiles</h3>
+                      <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                        Select a provider and click Apply to configure Windows network adapter via Administrator elevation.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {[
+                      ['AdGuard DNS', '94.140.14.14, 94.140.15.15', 'Default ad-blocking & anti-tracker sinkhole resolver', '94.140.14.14'],
+                      ['AdGuard DNS Family Protection', '94.140.14.15, 94.140.15.16', 'Safe search, parental control & adult domain blocker', '94.140.14.15'],
+                      ['Cloudflare DNS', '1.1.1.1, 1.0.0.1', 'Ultra-fast global 1.1.1.1 DNS with warp speed routing', '1.1.1.1'],
+                      ['Quad9 DNS', '9.9.9.9, 149.112.112.112', 'High-security malware domain sinkhole & threat filter', '9.9.9.9']
+                    ].map(([name, ips, desc, primaryIp]: any) => {
+                      const isRealActiveInWindows = activeSystemDns.dnsServers.includes(primaryIp);
+                      const isSelected = selectedDnsProvider === name;
+
+                      return (
+                        <div
+                          key={name}
+                          onClick={() => handleSelectDns(name)}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '12px 16px',
+                            borderRadius: 10,
+                            background: isSelected ? 'rgba(0,242,254,0.14)' : 'rgba(0,0,0,0.28)',
+                            border: isSelected ? '1px solid #00f2fe' : '1px solid rgba(255,255,255,0.06)',
+                            cursor: 'pointer',
+                            transition: 'all 0.18s ease'
+                          }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontWeight: 700, fontSize: 13.5, color: '#fff' }}>{name}</span>
+                              {isRealActiveInWindows ? (
+                                <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, background: 'rgba(0,230,118,0.2)', color: '#00e676', fontWeight: 700, border: '1px solid #00e676' }}>
+                                  ✓ ACTIVE IN WINDOWS
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)' }}>
+                                  Not Applied
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 3 }}>{desc}</div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                            <div style={{ textAlign: 'right' }}>
+                              <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#00f2fe', fontWeight: 600 }}>{ips}</div>
+                              <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginTop: 2 }}>
+                                {isSelected ? `Latency: ${dnsLatencyMs}ms` : 'Click to select'}
+                              </div>
+                            </div>
+
+                            <button
+                              className="btn-primary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleApplyDns(name);
+                              }}
+                              disabled={isApplyingDns || isRealActiveInWindows}
+                              style={{
+                                padding: '6px 14px',
+                                fontSize: 11.5,
+                                background: isRealActiveInWindows ? 'rgba(0,230,118,0.2)' : undefined,
+                                borderColor: isRealActiveInWindows ? '#00e676' : undefined,
+                                color: isRealActiveInWindows ? '#00e676' : '#fff'
+                              }}
+                            >
+                              {isRealActiveInWindows ? 'Applied ✓' : isApplyingDns ? 'Applying…' : 'Apply (Admin)'}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Actions Bar */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)', flexWrap: 'wrap', gap: 10 }}>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <button
+                        className="btn-primary"
+                        onClick={() => handleApplyDns(selectedDnsProvider)}
+                        disabled={isApplyingDns}
+                        style={{ padding: '8px 16px' }}
+                      >
+                        <Shield size={14} /> Apply Selected ({selectedDnsProvider})
+                      </button>
+                      <button
+                        className="btn-secondary"
+                        onClick={handleRestoreDns}
+                        disabled={isApplyingDns}
+                        style={{ padding: '8px 16px' }}
+                      >
+                        <RotateCcw size={14} /> Restore ISP / Router Default (DHCP)
+                      </button>
+                    </div>
+
+                    <button
+                      className="btn-secondary"
+                      onClick={handleRunSinkholeTest}
+                      disabled={isTestingSinkhole}
+                      style={{ padding: '8px 16px', background: 'rgba(157,78,221,0.2)', borderColor: '#9d4edd', color: '#fff' }}
+                    >
+                      <Activity size={14} color="#9d4edd" /> {isTestingSinkhole ? 'Testing Live Sinkhole…' : '🔬 Test AdGuard Ad-Blocking Proof'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. Live DNS Sinkhole Verification Proof Card */}
+                {sinkholeTestResult && (
+                  <div
+                    className="glass-card"
+                    style={{
+                      padding: '16px 20px',
+                      background: 'rgba(0,0,0,0.45)',
+                      border: sinkholeTestResult.systemBlocked ? '1px solid #00e676' : '1px solid #ff3860'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: sinkholeTestResult.systemBlocked ? '#00e676' : '#ff4757' }}>
+                          {sinkholeTestResult.systemBlocked ? '🛡️ Live Sinkhole Verified: Ads Blocked!' : '⚠️ System DNS Verification Result'}
+                        </span>
+                      </div>
+                      <span className="metric-pill" style={{ color: '#00f2fe' }}>Target: doubleclick.net</span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
+                      <div style={{ padding: 12, borderRadius: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>AdGuard Upstream DNS (94.140.14.14):</div>
+                        <div style={{ fontSize: 14, fontFamily: 'monospace', fontWeight: 700, color: '#00e676', marginTop: 4 }}>
+                          {sinkholeTestResult.adguardServerResult} (Sinkholed)
+                        </div>
+                        <div style={{ fontSize: 11, color: '#00e676', marginTop: 2 }}>
+                          Domain blocked to 0.0.0.0 so ads cannot load.
+                        </div>
+                      </div>
+
+                      <div style={{ padding: 12, borderRadius: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Your Current Windows DNS Resolver:</div>
+                        <div style={{ fontSize: 14, fontFamily: 'monospace', fontWeight: 700, color: sinkholeTestResult.systemBlocked ? '#00e676' : '#ff4757', marginTop: 4 }}>
+                          {sinkholeTestResult.systemDnsResult}
+                        </div>
+                        <div style={{ fontSize: 11, color: sinkholeTestResult.systemBlocked ? '#00e676' : '#ff4757', marginTop: 2 }}>
+                          {sinkholeTestResult.systemBlocked
+                            ? 'Your Windows adapter is using AdGuard — ads are blocked!'
+                            : 'Currently using standard ISP DNS — ads resolve to real IPs.'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 10, lineHeight: 1.4 }}>
+                      {sinkholeTestResult.statusText}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
