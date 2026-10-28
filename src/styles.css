@@ -1,0 +1,299 @@
+:root {
+  --bg-midnight: #0f0720;
+  --bg-indigo: #1b0f38;
+  --aurora-purple: #8b3dff;
+  --aurora-cyan: #00e5ff;
+  --aurora-magenta: #ff2a85;
+  --aurora-emerald: #18e299;
+  --aurora-coral: #ff6b4a;
+  --glass-bg: rgba(31, 18, 59, 0.62);
+  --glass-border: rgba(164, 118, 255, 0.34);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.68);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+body, html, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: radial-gradient(circle at 18% 18%, #2a1255 0%, #14082c 55%, #0b0418 100%);
+  color: var(--text-primary);
+}
+
+.aurora-app-shell {
+  position: relative;
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Animated 3D Aurora Background Blobs */
+.aurora-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(85px);
+  opacity: 0.42;
+  pointer-events: none;
+  z-index: 0;
+  animation: floatBlob 14s ease-in-out infinite alternate;
+}
+
+.aurora-blob.b1 {
+  width: 440px;
+  height: 440px;
+  background: var(--aurora-purple);
+  top: -110px;
+  left: 160px;
+}
+
+.aurora-blob.b2 {
+  width: 390px;
+  height: 390px;
+  background: var(--aurora-cyan);
+  bottom: -120px;
+  right: 80px;
+  animation-delay: -5s;
+}
+
+.aurora-blob.b3 {
+  width: 320px;
+  height: 320px;
+  background: var(--aurora-magenta);
+  top: 38%;
+  left: 52%;
+  animation-delay: -9s;
+}
+
+@keyframes floatBlob {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(38px, -28px) scale(1.12); }
+}
+
+/* Sidebar */
+.sidebar {
+  position: relative;
+  z-index: 2;
+  width: 248px;
+  height: 100%;
+  background: rgba(18, 9, 38, 0.78);
+  backdrop-filter: blur(26px);
+  border-right: 1px solid rgba(255, 255, 255, 0.11);
+  display: flex;
+  flex-direction: column;
+  padding: 18px 12px 14px;
+}
+
+.brand-header {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 6px 10px 16px;
+}
+
+.brand-orb {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, var(--aurora-purple), var(--aurora-cyan));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0, 229, 255, 0.35);
+}
+
+.nav-scroll {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 4px;
+}
+
+.nav-section-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.42);
+  padding: 12px 10px 4px;
+}
+
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-align: left;
+}
+
+.nav-btn:hover {
+  background: rgba(139, 61, 255, 0.18);
+  color: #fff;
+}
+
+.nav-btn.active {
+  background: linear-gradient(90deg, rgba(139, 61, 255, 0.42), rgba(0, 229, 255, 0.22));
+  border-color: rgba(0, 229, 255, 0.42);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(139, 61, 255, 0.28);
+}
+
+/* Main Workspace */
+.workspace {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  height: 100%;
+  overflow-y: auto;
+  padding: 24px 28px;
+}
+
+/* 3D Glass Card */
+.glass-card {
+  background: linear-gradient(145deg, rgba(42, 23, 79, 0.68), rgba(19, 10, 41, 0.78));
+  backdrop-filter: blur(22px);
+  border-radius: 16px;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 10px 28px rgba(6, 2, 16, 0.52), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  padding: 18px;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.glass-card.interactive:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 229, 255, 0.55);
+}
+
+/* 3D Neon Scan Button */
+.neon-scan-orb {
+  width: 118px;
+  height: 118px;
+  border-radius: 50%;
+  border: 3px solid rgba(0, 229, 255, 0.75);
+  background: radial-gradient(circle at 32% 28%, #00e5ff, #8b3dff 58%, #3c0d82 100%);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  box-shadow: 0 0 32px rgba(0, 229, 255, 0.55), 0 0 65px rgba(139, 61, 255, 0.45), inset 0 3px 12px rgba(255, 255, 255, 0.55);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.neon-scan-orb:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 44px rgba(0, 229, 255, 0.82), 0 0 80px rgba(255, 42, 133, 0.55);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--aurora-cyan), var(--aurora-purple));
+  color: #fff;
+  border: none;
+  border-radius: 9px;
+  padding: 8px 16px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 14px rgba(0, 229, 255, 0.28);
+}
+
+.btn-primary:hover {
+  filter: brightness(1.1);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.11);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 6px 13px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.btn-danger {
+  background: rgba(255, 107, 74, 0.2);
+  color: #ff866b;
+  border: 1px solid rgba(255, 107, 74, 0.45);
+  border-radius: 8px;
+  padding: 5px 11px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-danger:hover {
+  background: rgba(255, 107, 74, 0.35);
+  color: #fff;
+}
+
+.input-box {
+  background: rgba(15, 7, 32, 0.72);
+  border: 1px solid rgba(164, 118, 255, 0.38);
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  outline: none;
+}
+
+.input-box:focus {
+  border-color: var(--aurora-cyan);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 3, 18, 0.74);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modal-card {
+  width: 560px;
+  max-width: 92vw;
+  background: linear-gradient(155deg, #251347, #120826);
+  border: 1px solid rgba(0, 229, 255, 0.45);
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.75);
+}

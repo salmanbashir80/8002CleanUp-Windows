@@ -1,0 +1,65 @@
+{
+  "name": "8002cleanup-windows",
+  "productName": "MacCare Pro for Windows (8002CleanUp)",
+  "version": "1.2.8",
+  "description": "8002CleanUp / WinCare Pro for Windows 10 & 11 — Smart System Cleaner, AdGuard Network Shield, Nova AI Cyber Guardian Pet, ScamAdviser Scanner & Battery Lifeguard",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "electron:dev": "vite build && electron .",
+    "dist:win": "vite build && electron-builder --win --x64",
+    "dist:mac": "vite build && electron-builder --mac"
+  },
+  "build": {
+    "appId": "com.salman.8002cleanup.windows",
+    "productName": "8002CleanUp Pro",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.png",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "8002CleanUp Pro",
+      "artifactName": "8002CleanUp-Windows-Setup-v${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "8002CleanUp-Windows-Portable-v${version}.${ext}"
+    }
+  },
+  "dependencies": {
+    "lucide-react": "^0.460.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}
