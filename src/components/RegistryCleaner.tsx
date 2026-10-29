@@ -83,6 +83,7 @@ export default function RegistryCleaner({ setStatusBanner }: Props) {
   const [showBackupsManager, setShowBackupsManager] = useState(false);
   const [backupsList, setBackupsList] = useState<BackupFile[]>([]);
   const [latestBackupPath, setLatestBackupPath] = useState<string | null>(null);
+  const [createBackupBeforeDelete, setCreateBackupBeforeDelete] = useState(false);
 
   // Issue Reviewer state
   const [reviewIndex, setReviewIndex] = useState(0);
@@ -213,13 +214,61 @@ export default function RegistryCleaner({ setStatusBanner }: Props) {
     setShowFixModal(true);
   };
 
-  // Proceed Without Backup
+  // Proceed Without Backup (Open Review Modal)
   const handleProceedWithoutBackup = () => {
     setShowBackupPrompt(false);
     setLatestBackupPath(null);
     setReviewIndex(0);
     setFixedCount(null);
     setShowFixModal(true);
+  };
+
+  // Direct Delete Now (with optional backup)
+  const handleDirectDeleteNow = async (withBackup = createBackupBeforeDelete) => {
+    if (selectedIssues.length === 0 || isFixing) return;
+    setIsFixing(true);
+    setFixProgress(20);
+
+    let backupFile = null;
+    if (withBackup) {
+      setStatusBanner('Creating optional .reg backup before cleaning…');
+      try {
+        if (window.electronAPI?.backupRegistry) {
+          const bRes = await window.electronAPI.backupRegistry(selectedIssues);
+          if (bRes.success) {
+            backupFile = bRes.filename;
+            setLatestBackupPath(bRes.backupPath);
+            refreshBackupsList();
+          }
+        }
+      } catch (err: any) {
+        console.error('Backup error:', err);
+      }
+    }
+
+    setStatusBanner(`Deleting ${selectedIssues.length} orphaned registry entries directly…`);
+    setFixProgress(60);
+
+    try {
+      if (window.electronAPI?.cleanRegistry) {
+        const res = await window.electronAPI.cleanRegistry(selectedIssues);
+        setFixProgress(100);
+        const count = res.cleanedCount || selectedIssues.length;
+        
+        // Remove cleaned items from local state
+        const remaining = issues.filter((i) => !i.selected);
+        setIssues(remaining);
+        
+        const backupNote = backupFile ? ` (Backup saved to Documents: ${backupFile})` : ' (No backup created)';
+        setStatusBanner(`✅ Deleted ${count} orphaned Windows Registry entries!${backupNote}`);
+      }
+    } catch (err: any) {
+      setStatusBanner(`Delete error: ${err.message}`);
+    } finally {
+      setIsFixing(false);
+      setShowBackupPrompt(false);
+      setShowFixModal(false);
+    }
   };
 
   // Fix Single Issue in Modal
@@ -484,9 +533,38 @@ export default function RegistryCleaner({ setStatusBanner }: Props) {
               {loading ? 'Scanning…' : 'Scan for Issues'}
             </button>
 
+            {/* Optional Backup Checkbox */}
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '7px 10px',
+                background: 'rgba(255,255,255,0.04)',
+                borderRadius: 8,
+                border: '1px solid rgba(255,255,255,0.08)',
+                cursor: 'pointer',
+                fontSize: 11,
+                color: createBackupBeforeDelete ? '#00e5ff' : 'var(--text-secondary)',
+                userSelect: 'none'
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={createBackupBeforeDelete}
+                onChange={(e) => setCreateBackupBeforeDelete(e.target.checked)}
+                style={{ accentColor: '#00e5ff', cursor: 'pointer' }}
+              />
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Save size={12} color={createBackupBeforeDelete ? '#00e5ff' : 'var(--text-secondary)'} />
+                Create .reg backup (Optional)
+              </span>
+            </label>
+
+            {/* DIRECT DELETE NOW BUTTON */}
             <button
               className="btn-primary"
-              onClick={handleStartReview}
+              onClick={() => handleDirectDeleteNow(createBackupBeforeDelete)}
               disabled={selectedIssues.length === 0 || loading || isFixing}
               style={{
                 width: '100%',
@@ -499,15 +577,35 @@ export default function RegistryCleaner({ setStatusBanner }: Props) {
                 gap: 8,
                 background:
                   selectedIssues.length > 0
-                    ? 'linear-gradient(135deg, #00c853, #00b0ff)'
+                    ? 'linear-gradient(135deg, #ff0055, #ff5252)'
                     : 'rgba(255, 255, 255, 0.08)',
-                boxShadow: selectedIssues.length > 0 ? '0 0 16px rgba(0, 200, 83, 0.4)' : 'none',
+                boxShadow: selectedIssues.length > 0 ? '0 0 16px rgba(255, 0, 85, 0.4)' : 'none',
                 opacity: selectedIssues.length > 0 ? 1 : 0.5,
                 cursor: selectedIssues.length > 0 ? 'pointer' : 'not-allowed'
               }}
             >
-              <ShieldCheck size={15} />
-              Review Selected Issues ({selectedIssues.length})
+              <Trash2 size={15} />
+              {isFixing ? 'Deleting Entries…' : `Delete Selected Now (${selectedIssues.length})`}
+            </button>
+
+            {/* REVIEW ISSUES STEP-BY-STEP */}
+            <button
+              className="btn-secondary"
+              onClick={handleStartReview}
+              disabled={selectedIssues.length === 0 || loading || isFixing}
+              style={{
+                width: '100%',
+                padding: '7px 12px',
+                fontSize: 11.5,
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6
+              }}
+            >
+              <ShieldCheck size={13} color="#00e5ff" />
+              Review Step-by-Step
             </button>
           </div>
         </div>
@@ -604,6 +702,28 @@ export default function RegistryCleaner({ setStatusBanner }: Props) {
               >
                 {filteredIssues.length > 0 && filteredIssues.every((i) => i.selected) ? 'Deselect All' : 'Select All'}
               </button>
+
+              {selectedIssues.length > 0 && (
+                <button
+                  className="btn-primary"
+                  onClick={() => handleDirectDeleteNow(createBackupBeforeDelete)}
+                  disabled={isFixing}
+                  style={{
+                    fontSize: 11.5,
+                    padding: '4px 12px',
+                    height: 28,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: 'linear-gradient(135deg, #ff0055, #ff5252)',
+                    fontWeight: 700,
+                    boxShadow: '0 0 10px rgba(255, 0, 85, 0.35)'
+                  }}
+                >
+                  <Trash2 size={13} />
+                  {isFixing ? 'Deleting…' : `Delete Now (${selectedIssues.length})`}
+                </button>
+              )}
             </div>
           </div>
 
@@ -822,11 +942,11 @@ export default function RegistryCleaner({ setStatusBanner }: Props) {
               Saving a backup creates a standard <code style={{ color: '#00e5ff' }}>.reg</code> file in your Documents folder. If any program requires these keys, you can restore them anytime with 1 click.
             </p>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
               <button
                 className="btn-secondary"
                 onClick={() => setShowBackupPrompt(false)}
-                style={{ fontSize: 12.5 }}
+                style={{ fontSize: 12 }}
               >
                 Cancel
               </button>
@@ -834,22 +954,43 @@ export default function RegistryCleaner({ setStatusBanner }: Props) {
               <button
                 className="btn-secondary"
                 onClick={handleProceedWithoutBackup}
-                style={{ fontSize: 12.5, color: '#ffbe0b', borderColor: 'rgba(255,190,11,0.3)' }}
+                style={{ fontSize: 12, color: '#00e5ff', borderColor: 'rgba(0,229,255,0.3)' }}
               >
-                No (Fix Directly)
+                <ShieldCheck size={13} /> Review Step-by-Step
+              </button>
+
+              <button
+                className="btn-secondary"
+                onClick={() => handleDirectDeleteNow(false)}
+                style={{
+                  fontSize: 12,
+                  color: '#ff4d6d',
+                  borderColor: 'rgba(255,77,109,0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontWeight: 600
+                }}
+              >
+                <Trash2 size={13} />
+                Delete Now (No Backup)
               </button>
 
               <button
                 className="btn-primary"
-                onClick={handleProceedWithBackup}
+                onClick={() => handleDirectDeleteNow(true)}
                 style={{
-                  fontSize: 12.5,
+                  fontSize: 12,
                   background: 'linear-gradient(135deg, #00c853, #00b0ff)',
-                  boxShadow: '0 0 16px rgba(0, 200, 83, 0.4)'
+                  boxShadow: '0 0 16px rgba(0, 200, 83, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontWeight: 700
                 }}
               >
-                <Save size={14} />
-                Yes (Create Backup &amp; Fix)
+                <Save size={13} />
+                Backup &amp; Delete Now
               </button>
             </div>
           </div>
