@@ -2293,33 +2293,33 @@ async function getNetUserFallback() {
 // Power User & Security Manager: Query all Windows User Accounts
 ipcMain.handle('get-power-users', async () => {
   if (process.platform !== 'win32') return [];
-  const scriptContent = `$ProgressPreference = 'SilentlyContinue'
-$adminNames = (Get-LocalGroupMember -Group "Administrators" -ErrorAction SilentlyContinue).Name | ForEach-Object { $_ -replace '^.*\\\\', '' }
+  const scriptContent = `\$ProgressPreference = 'SilentlyContinue'
+\$adminNames = @((Get-LocalGroupMember -Group "Administrators" -ErrorAction SilentlyContinue).Name | ForEach-Object { \$_ -replace '^.*\\\\', '' })
 
-$users = Get-LocalUser -ErrorAction SilentlyContinue | ForEach-Object {
-    $name = $_.Name
-    $isAdmin = $adminNames -contains $name
-    $role = if ($isAdmin) { 'Administrator' } elseif ($name -eq 'Guest') { 'Guest' } else { 'Standard User' }
+\$users = Get-LocalUser -ErrorAction SilentlyContinue | ForEach-Object {
+    \$name = \$_.Name
+    \$isAdmin = \$adminNames -contains \$name
+    \$role = if (\$isAdmin) { 'Administrator' } elseif (\$name -eq 'Guest') { 'Guest' } else { 'Standard User' }
     
-    $lastLogonStr = if ($_.LastLogon) { (Get-Date $_.LastLogon).ToString('yyyy-MM-dd HH:mm') } else { 'Never' }
-    $pwdChangedStr = if ($_.PasswordChangeableDate) { (Get-Date $_.PasswordChangeableDate).ToString('yyyy-MM-dd') } else { 'Not Set' }
+    \$lastLogonStr = if (\$_.LastLogon) { (Get-Date \$_.LastLogon).ToString('yyyy-MM-dd HH:mm') } else { 'Never' }
+    \$pwdChangedStr = if (\$_.PasswordChangeableDate) { (Get-Date \$_.PasswordChangeableDate).ToString('yyyy-MM-dd') } else { 'Not Set' }
 
     @{
-        name = $name
-        fullName = if ($_.FullName) { $_.FullName } else { $name }
-        description = if ($_.Description) { $_.Description } else { 'Local Windows Account' }
-        enabled = [bool]$_.Enabled
-        role = $role
-        isAdmin = [bool]$isAdmin
-        passwordRequired = [bool]$_.PasswordRequired
-        passwordExpires = [bool]$_.PasswordExpires
-        userMayChangePassword = [bool]$_.UserMayChangePassword
-        lastLogon = $lastLogonStr
-        passwordChangeDate = $pwdChangedStr
-        sid = if ($_.SID) { $_.SID.Value } else { '' }
+        name = \$name
+        fullName = if (\$_.FullName) { \$_.FullName } else { \$name }
+        description = if (\$_.Description) { \$_.Description } else { 'Local Windows Account' }
+        enabled = [bool]\$_.Enabled
+        role = \$role
+        isAdmin = [bool]\$isAdmin
+        passwordRequired = [bool]\$_.PasswordRequired
+        passwordExpires = [bool]\$_.PasswordExpires
+        userMayChangePassword = [bool]\$_.UserMayChangePassword
+        lastLogon = \$lastLogonStr
+        passwordChangeDate = \$pwdChangedStr
+        sid = if (\$_.SID) { \$_.SID.Value } else { '' }
     }
 }
-$users | ConvertTo-Json -Compress`;
+\$users | ConvertTo-Json -Compress`;
 
   const tmpFile = path.join(os.tmpdir(), `8002_users_${Date.now()}.ps1`);
   try {

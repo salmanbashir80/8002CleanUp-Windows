@@ -51,7 +51,8 @@ import {
   PieChart,
   MessageSquare,
   ShieldAlert,
-  ShieldCheck
+  ShieldCheck,
+  Loader2
 } from 'lucide-react';
 
 import RegistryCleaner from './components/RegistryCleaner';
@@ -792,6 +793,74 @@ export default function App() {
     if (activeModule === 'space_lens' && largeFiles.length === 0) loadLargeFiles();
   }, [activeModule]);
 
+  // Live Active Task Monitor computation (Visible across all tabs & frozen header)
+  const getLiveActiveTask = () => {
+    if (isCleaning) {
+      return {
+        active: true,
+        text: cleanProgress?.target ? `Cleaning: ${cleanProgress.target}` : 'Cleaning System Junk…',
+        sub: `${cleanProgress?.items || 0} items processed`,
+        color: '#ff0055'
+      };
+    }
+    if (isScanning) {
+      return {
+        active: true,
+        text: scanStage || 'Scanning System Caches & %TEMP%…',
+        sub: 'Phase Active',
+        color: '#00e5ff'
+      };
+    }
+    if (isPurgingRam) {
+      return {
+        active: true,
+        text: 'Purging Physical Standby RAM via Windows API…',
+        sub: 'RAM Purge Active',
+        color: '#18e299'
+      };
+    }
+    if (isScanningUrl) {
+      return {
+        active: true,
+        text: 'Nova AI Scanning Website Security & Phishing…',
+        sub: 'ScamAdviser Live Engine',
+        color: '#a66bff'
+      };
+    }
+    if (isApplyingDns) {
+      return {
+        active: true,
+        text: 'Configuring Ultra-Fast DNS on Windows Network Adapter…',
+        sub: 'Applying DNS',
+        color: '#00e5ff'
+      };
+    }
+    if (isShredding) {
+      return {
+        active: true,
+        text: shredStep || 'DoD 5220.22-M Multi-Pass Shredding File…',
+        sub: 'Forensic Destruction',
+        color: '#ff2a85'
+      };
+    }
+    if (statusBanner && /Scanning|Cleaning|Purging|Carving|Inspecting|Auditing|Restoring|Applying|Deleting|Repairing/i.test(statusBanner)) {
+      return {
+        active: true,
+        text: statusBanner,
+        sub: 'In Progress',
+        color: '#00e5ff'
+      };
+    }
+    return {
+      active: false,
+      text: 'All 12 Pro Engines Online • System Protected',
+      sub: 'Idle',
+      color: '#00e676'
+    };
+  };
+
+  const currentLiveTask = getLiveActiveTask();
+
   return (
     <div className="aurora-app-shell" data-theme={theme}>
       {/* 3D Aurora Blobs */}
@@ -1087,7 +1156,7 @@ export default function App() {
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 6 }}>
-            <span style={{ color: 'var(--text-secondary)' }}>v2.3.5 Pro</span>
+            <span style={{ color: 'var(--text-secondary)' }}>v2.3.6 Pro</span>
             <span style={{ color: '#18e299', fontWeight: 600 }}>● Live Engine</span>
           </div>
           <button
@@ -1115,190 +1184,208 @@ export default function App() {
 
       {/* MAIN VIEWPORT */}
       <main className="main-viewport">
-        {/* Top Bar with Segmented Control & Action Pills */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 10 }}>
-          {CLEANUP_TABS.some(t => t.id === activeModule) && (
-            <div className="segmented-tab-bar">
-              {CLEANUP_TABS.map(tab => {
-                const TabIcon = tab.icon;
-                const isActive = activeModule === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    className={`segmented-tab-btn ${isActive ? 'active' : ''}`}
-                    onClick={() => {
-                      if (tab.id === 'system_junk' || tab.id === 'browser_cleanup') {
-                        setCategoryFilter(tab.id === 'system_junk' ? 'System Junk' : 'Browser Cleanup');
-                      }
-                      setActiveModule(tab.id);
-                    }}
-                  >
-                    <TabIcon size={13} />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+        {/* Sticky Frozen Top Header (Stays fixed at top during scroll across all modules) */}
+        <header className="sticky-frozen-header">
+          <div className="sticky-frozen-bar">
+            {/* Left: Segmented Tabs or Active Module Title */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+              {CLEANUP_TABS.some(t => t.id === activeModule) && (
+                <div className="segmented-tab-bar">
+                  {CLEANUP_TABS.map(tab => {
+                    const TabIcon = tab.icon;
+                    const isActive = activeModule === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        className={`segmented-tab-btn ${isActive ? 'active' : ''}`}
+                        onClick={() => {
+                          if (tab.id === 'system_junk' || tab.id === 'browser_cleanup') {
+                            setCategoryFilter(tab.id === 'system_junk' ? 'System Junk' : 'Browser Cleanup');
+                          }
+                          setActiveModule(tab.id);
+                        }}
+                      >
+                        <TabIcon size={13} />
+                        <span>{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
-          {STORAGE_TABS.some(t => t.id === activeModule) && (
-            <div className="segmented-tab-bar">
-              {STORAGE_TABS.map(tab => {
-                const TabIcon = tab.icon;
-                const isActive = activeModule === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    className={`segmented-tab-btn ${isActive ? 'active' : ''}`}
-                    onClick={() => setActiveModule(tab.id)}
-                  >
-                    <TabIcon size={13} />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+              {STORAGE_TABS.some(t => t.id === activeModule) && (
+                <div className="segmented-tab-bar">
+                  {STORAGE_TABS.map(tab => {
+                    const TabIcon = tab.icon;
+                    const isActive = activeModule === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        className={`segmented-tab-btn ${isActive ? 'active' : ''}`}
+                        onClick={() => setActiveModule(tab.id)}
+                      >
+                        <TabIcon size={13} />
+                        <span>{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
-          {SECURITY_TABS.some(t => t.id === activeModule) && (
-            <div className="segmented-tab-bar">
-              {SECURITY_TABS.map(tab => {
-                const TabIcon = tab.icon;
-                const isActive = activeModule === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    className={`segmented-tab-btn ${isActive ? 'active' : ''}`}
-                    onClick={() => setActiveModule(tab.id)}
-                  >
-                    <TabIcon size={13} />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+              {SECURITY_TABS.some(t => t.id === activeModule) && (
+                <div className="segmented-tab-bar">
+                  {SECURITY_TABS.map(tab => {
+                    const TabIcon = tab.icon;
+                    const isActive = activeModule === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        className={`segmented-tab-btn ${isActive ? 'active' : ''}`}
+                        onClick={() => setActiveModule(tab.id)}
+                      >
+                        <TabIcon size={13} />
+                        <span>{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
-          {PERFORMANCE_TABS.some(t => t.id === activeModule) && (
-            <div className="segmented-tab-bar">
-              {PERFORMANCE_TABS.map(tab => {
-                const TabIcon = tab.icon;
-                const isActive = activeModule === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    className={`segmented-tab-btn ${isActive ? 'active' : ''}`}
-                    onClick={() => setActiveModule(tab.id)}
-                  >
-                    <TabIcon size={13} />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+              {PERFORMANCE_TABS.some(t => t.id === activeModule) && (
+                <div className="segmented-tab-bar">
+                  {PERFORMANCE_TABS.map(tab => {
+                    const TabIcon = tab.icon;
+                    const isActive = activeModule === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        className={`segmented-tab-btn ${isActive ? 'active' : ''}`}
+                        onClick={() => setActiveModule(tab.id)}
+                      >
+                        <TabIcon size={13} />
+                        <span>{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
-          {HARDWARE_TABS.some(t => t.id === activeModule) && (
-            <div className="segmented-tab-bar">
-              {HARDWARE_TABS.map(tab => {
-                const TabIcon = tab.icon;
-                const isActive = activeModule === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    className={`segmented-tab-btn ${isActive ? 'active' : ''}`}
-                    onClick={() => setActiveModule(tab.id)}
-                  >
-                    <TabIcon size={13} />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+              {HARDWARE_TABS.some(t => t.id === activeModule) && (
+                <div className="segmented-tab-bar">
+                  {HARDWARE_TABS.map(tab => {
+                    const TabIcon = tab.icon;
+                    const isActive = activeModule === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        className={`segmented-tab-btn ${isActive ? 'active' : ''}`}
+                        onClick={() => setActiveModule(tab.id)}
+                      >
+                        <TabIcon size={13} />
+                        <span>{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
-          {activeModule === 'smart_care' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text-secondary)' }}>
-              <Sparkles size={14} color="#00e5ff" />
-              <span>Smart Care Unified Overview</span>
-            </div>
-          )}
+              {activeModule === 'smart_care' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                  <Sparkles size={14} color="#00e5ff" />
+                  <span>Smart Care Unified Overview</span>
+                </div>
+              )}
 
-          {activeModule === 'my_tools' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text-secondary)' }}>
-              <Wrench size={14} color="#a66bff" />
-              <span>All 18 Utilities Quick Launcher</span>
+              {activeModule === 'my_tools' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                  <Wrench size={14} color="#a66bff" />
+                  <span>All 18 Utilities Quick Launcher</span>
+                </div>
+              )}
             </div>
-          )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }}>
-            {/* REAL-TIME INTERNET SPEED TOOLBAR METER (Always Visible) */}
+            {/* Center: Real-Time Active Task Monitor Pill */}
             <div
-              className="toolbar-net-meter"
-              onClick={() => setActiveModule('speed_test')}
-              title={`Active Connection: ${liveNetwork.adapter}\nClick to launch Full Real-Time Speed Test`}
+              className={`live-active-task-pill ${currentLiveTask.active ? 'active-pulse' : 'idle'}`}
+              title={currentLiveTask.active ? `Active Task: ${currentLiveTask.text}` : 'System Health: All Pro Engines Online'}
             >
-              <div className="net-meter-pulse" />
-              <div className="net-meter-stat">
-                <ArrowDown size={12} className="net-down-icon" />
-                <span className="net-speed-val net-down-val">{liveNetwork.downFormatted}</span>
-              </div>
-              <div className="net-meter-divider" />
-              <div className="net-meter-stat">
-                <ArrowUp size={12} className="net-up-icon" />
-                <span className="net-speed-val net-up-val">{liveNetwork.upFormatted}</span>
-              </div>
-              <div className="net-meter-ping">
-                <span style={{ color: '#00e676' }}>●</span> {liveNetwork.pingMs}ms
-              </div>
+              {currentLiveTask.active ? (
+                <Loader2 size={13} className="animate-spin" style={{ color: currentLiveTask.color, flexShrink: 0 }} />
+              ) : (
+                <div className="task-idle-dot" />
+              )}
+              <span className="live-task-text" style={{ color: currentLiveTask.active ? '#fff' : 'rgba(255,255,255,0.85)' }}>
+                {currentLiveTask.text}
+              </span>
+              <span
+                className="live-task-badge"
+                style={{
+                  background: currentLiveTask.active ? `${currentLiveTask.color}25` : 'rgba(0, 230, 118, 0.15)',
+                  color: currentLiveTask.color,
+                  border: `1px solid ${currentLiveTask.color}50`
+                }}
+              >
+                {currentLiveTask.sub}
+              </span>
             </div>
 
-            <button
-              className="btn-secondary"
-              onClick={() => (window as any).electronAPI?.toggleTrayPanel && (window as any).electronAPI.toggleTrayPanel()}
-              title="Toggle PC Manager Notification Panel Popover"
-              style={{ padding: '5px 10px', fontSize: 11.5 }}
-            >
-              <Zap size={13} color="#00e5ff" />
-              <span>Notification Panel</span>
-            </button>
+            {/* Right: Network Speed Meter, Notification Panel & Theme */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto', flexShrink: 0 }}>
+              <div
+                className="toolbar-net-meter"
+                onClick={() => setActiveModule('speed_test')}
+                title={`Active Connection: ${liveNetwork.adapter}\nClick to launch Full Real-Time Speed Test`}
+              >
+                <div className="net-meter-pulse" />
+                <div className="net-meter-stat">
+                  <ArrowDown size={12} className="net-down-icon" />
+                  <span className="net-speed-val net-down-val">{liveNetwork.downFormatted}</span>
+                </div>
+                <div className="net-meter-divider" />
+                <div className="net-meter-stat">
+                  <ArrowUp size={12} className="net-up-icon" />
+                  <span className="net-speed-val net-up-val">{liveNetwork.upFormatted}</span>
+                </div>
+                <div className="net-meter-ping">
+                  <span style={{ color: '#00e676' }}>●</span> {liveNetwork.pingMs}ms
+                </div>
+              </div>
 
-            <button
-              className="btn-secondary"
-              onClick={() => setTheme(theme === 'crystal' ? 'pearl' : 'crystal')}
-              title="Toggle Crystal Sapphire / Pearl Light Glass Look"
-              style={{ padding: '5px 8px' }}
-            >
-              {theme === 'crystal' ? <Sun size={13} color="#ffbe0b" /> : <Moon size={13} color="#00e5ff" />}
-            </button>
-          </div>
-        </div>
+              <button
+                className="btn-secondary"
+                onClick={() => (window as any).electronAPI?.toggleTrayPanel && (window as any).electronAPI.toggleTrayPanel()}
+                title="Toggle PC Manager Notification Panel Popover"
+                style={{ padding: '5px 10px', fontSize: 11.5 }}
+              >
+                <Zap size={13} color="#00e5ff" />
+                <span>Notification Panel</span>
+              </button>
 
-        {/* Top Status Bar */}
-        {statusBanner && (
-          <div
-            style={{
-              padding: '9px 16px',
-              borderRadius: 10,
-              background: 'rgba(139, 61, 255, 0.16)',
-              border: '1px solid rgba(0, 229, 255, 0.35)',
-              marginBottom: 16,
-              fontSize: 12.5,
-              fontWeight: 600,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}
-          >
-            <span>{statusBanner}</span>
-            <button
-              onClick={() => setStatusBanner(null)}
-              style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer' }}
-            >
-              <X size={14} />
-            </button>
+              <button
+                className="btn-secondary"
+                onClick={() => setTheme(theme === 'crystal' ? 'pearl' : 'crystal')}
+                title="Toggle Crystal Sapphire / Pearl Light Glass Look"
+                style={{ padding: '5px 8px' }}
+              >
+                {theme === 'crystal' ? <Sun size={13} color="#ffbe0b" /> : <Moon size={13} color="#00e5ff" />}
+              </button>
+            </div>
           </div>
-        )}
+
+          {/* Sticky Status Banner */}
+          {statusBanner && (
+            <div className="sticky-status-banner">
+              <span>{statusBanner}</span>
+              <button
+                onClick={() => setStatusBanner(null)}
+                className="status-close-btn"
+                title="Dismiss Notification"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
+        </header>
 
         {/* ============================================================== */}
         {/* 1. MODULE: SMART CARE DASHBOARD (MAXIMIZE & FULLSCREEN OPTIMIZED) */}
