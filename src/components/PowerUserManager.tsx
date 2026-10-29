@@ -328,7 +328,7 @@ export default function PowerUserManager({ setStatusBanner }: Props) {
 
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 14.5, fontWeight: 600, color: '#fff' }}>
+                      <span style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--text-primary)' }}>
                         {user.name}
                       </span>
                       {user.fullName && user.fullName !== user.name && (

@@ -1156,7 +1156,7 @@ export default function App() {
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 6 }}>
-            <span style={{ color: 'var(--text-secondary)' }}>v2.3.6 Pro</span>
+            <span style={{ color: 'var(--text-secondary)' }}>v2.3.7 Pro</span>
             <span style={{ color: '#18e299', fontWeight: 600 }}>● Live Engine</span>
           </div>
           <button
@@ -1565,7 +1565,7 @@ export default function App() {
                   <Database size={20} color="#ff2a85" />
                   <span className="metric-pill" style={{ color: '#ff2a85', borderColor: 'rgba(255,42,133,0.3)' }}>New Engine</span>
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginTop: 8 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginTop: 8 }}>
                   Registry Cleaner
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -1582,7 +1582,7 @@ export default function App() {
                   <Sliders size={20} color="#00e5ff" />
                   <span className="metric-pill" style={{ color: '#00e5ff', borderColor: 'rgba(0,229,255,0.3)' }}>PnP Hardware</span>
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginTop: 8 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginTop: 8 }}>
                   Driver Inspector &amp; Updates
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -1599,7 +1599,7 @@ export default function App() {
                   <Sparkles size={20} color="#18e299" />
                   <span className="metric-pill" style={{ color: '#18e299', borderColor: 'rgba(24,226,153,0.3)' }}>13 Phases</span>
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginTop: 8 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginTop: 8 }}>
                   13-Phase Deep Scan
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -1616,7 +1616,7 @@ export default function App() {
                   <Wifi size={20} color="#ffbe0b" />
                   <span className="metric-pill" style={{ color: '#ffbe0b', borderColor: 'rgba(255,190,11,0.3)' }}>Live CDN</span>
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginTop: 8 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginTop: 8 }}>
                   Real-Time Speed Test
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -1633,7 +1633,7 @@ export default function App() {
                   <Cpu size={20} color="#00e5ff" />
                   <span className="metric-pill" style={{ color: '#00e5ff', borderColor: 'rgba(0,229,255,0.3)' }}>Hardware Lab</span>
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginTop: 8 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginTop: 8 }}>
                   Hardware &amp; Firmware Deep Studio
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -1650,7 +1650,7 @@ export default function App() {
                   <Users size={20} color="#ffbe0b" />
                   <span className="metric-pill" style={{ color: '#ffbe0b', borderColor: 'rgba(255,190,11,0.3)' }}>Security Control</span>
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginTop: 8 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginTop: 8 }}>
                   Power User &amp; Accounts
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -1667,7 +1667,7 @@ export default function App() {
                   <LifeBuoy size={20} color="#00e5ff" />
                   <span className="metric-pill" style={{ color: '#00e5ff', borderColor: 'rgba(0,229,255,0.3)' }}>Forensic Carving</span>
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', marginTop: 8 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginTop: 8 }}>
                   Deep File Recovery
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -2202,13 +2202,14 @@ export default function App() {
                           alignItems: 'center',
                           padding: '12px 16px',
                           borderRadius: 10,
-                          background: 'rgba(0,0,0,0.26)',
-                          border: '1px solid rgba(255,255,255,0.06)',
+                          background: theme === 'crystal' ? 'rgba(0,0,0,0.26)' : '#ffffff',
+                          border: theme === 'crystal' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.08)',
+                          boxShadow: theme === 'crystal' ? 'none' : '0 2px 6px rgba(0,0,0,0.03)',
                           gap: 12
                         }}
                       >
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {app.name}
                           </div>
                           <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 3 }}>
@@ -2469,10 +2470,10 @@ export default function App() {
                   className="glass-card"
                   style={{
                     padding: '28px 24px',
-                    background: 'linear-gradient(180deg, rgba(20, 26, 36, 0.95) 0%, rgba(12, 16, 24, 0.98) 100%)',
-                    border: isProtectionEnabled ? '1px solid rgba(0, 230, 118, 0.35)' : '1px solid rgba(255, 255, 255, 0.1)',
+                    background: theme === 'crystal' ? 'linear-gradient(180deg, rgba(20, 26, 36, 0.95) 0%, rgba(12, 16, 24, 0.98) 100%)' : 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+                    border: isProtectionEnabled ? (theme === 'crystal' ? '1px solid rgba(0, 230, 118, 0.35)' : '1px solid rgba(0, 200, 83, 0.4)') : (theme === 'crystal' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.08)'),
                     borderRadius: 18,
-                    boxShadow: isProtectionEnabled ? '0 10px 40px rgba(0, 230, 118, 0.12)' : 'none',
+                    boxShadow: isProtectionEnabled ? (theme === 'crystal' ? '0 10px 40px rgba(0, 230, 118, 0.12)' : '0 10px 30px rgba(0, 200, 83, 0.1)') : (theme === 'crystal' ? 'none' : '0 4px 20px rgba(0,0,0,0.04)'),
                     position: 'relative'
                   }}
                 >
@@ -2480,8 +2481,8 @@ export default function App() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <Shield size={24} color={isProtectionEnabled ? '#00e676' : '#718096'} />
-                      <span style={{ fontSize: 21, fontWeight: 800, color: '#fff', letterSpacing: -0.5 }}>adguard</span>
-                      <span style={{ fontSize: 11, color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.06)', padding: '2px 8px', borderRadius: 8 }}>
+                      <span style={{ fontSize: 21, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: -0.5 }}>adguard</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-secondary)', background: theme === 'crystal' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', padding: '2px 8px', borderRadius: 8 }}>
                         Windows Edition
                       </span>
                     </div>
@@ -2508,7 +2509,7 @@ export default function App() {
                   </div>
 
                   {/* Row of 6 Module Mini Icons (Matching Screenshot 1) */}
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 26, margin: '15px 0 25px 0', padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 26, margin: '15px 0 25px 0', padding: '12px 0', borderBottom: theme === 'crystal' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.06)', flexWrap: 'wrap' }}>
                     {[
                       { key: 'adblock', icon: EyeOff, label: 'Ad blocking', active: adguardModuleAdBlock },
                       { key: 'tracking', icon: ShieldCheck, label: 'Tracking', active: adguardModuleTracking },
@@ -2539,7 +2540,7 @@ export default function App() {
                               width: 36,
                               height: 36,
                               borderRadius: '50%',
-                              background: isItemActive ? 'rgba(0, 230, 118, 0.16)' : 'rgba(255,255,255,0.05)',
+                              background: isItemActive ? 'rgba(0, 230, 118, 0.16)' : (theme === 'crystal' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'),
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -2558,10 +2559,10 @@ export default function App() {
 
                   {/* Centerpiece: Status & Giant Toggle Switch */}
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '10px 0 20px 0' }}>
-                    <div style={{ fontSize: 26, fontWeight: 700, color: '#fff', letterSpacing: -0.4 }}>
+                    <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: -0.4 }}>
                       {isProtectionEnabled ? 'Protection is enabled' : 'Protection is paused'}
                     </div>
-                    <div style={{ fontSize: 13.5, color: '#94a3b8', marginTop: 4 }}>
+                    <div style={{ fontSize: 13.5, color: 'var(--text-secondary)', marginTop: 4 }}>
                       {isProtectionEnabled ? "Surf safely — we've got your back" : 'Protection is turned off — click toggle to shield your system'}
                     </div>
 
@@ -2573,7 +2574,7 @@ export default function App() {
                         width: 120,
                         height: 64,
                         borderRadius: 32,
-                        background: isProtectionEnabled ? '#00e676' : '#262f3d',
+                        background: isProtectionEnabled ? '#00e676' : (theme === 'crystal' ? '#262f3d' : '#cbd5e1'),
                         padding: 5,
                         cursor: 'pointer',
                         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -2581,7 +2582,7 @@ export default function App() {
                         alignItems: 'center',
                         justifyContent: isProtectionEnabled ? 'flex-end' : 'flex-start',
                         boxShadow: isProtectionEnabled ? '0 0 35px rgba(0, 230, 118, 0.5)' : 'none',
-                        border: isProtectionEnabled ? '2px solid rgba(255,255,255,0.45)' : '2px solid rgba(255,255,255,0.1)'
+                        border: isProtectionEnabled ? '2px solid rgba(255,255,255,0.45)' : (theme === 'crystal' ? '2px solid rgba(255,255,255,0.1)' : '2px solid rgba(0,0,0,0.1)')
                       }}
                     >
                       <div
@@ -2593,7 +2594,7 @@ export default function App() {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.35)',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
                           transition: 'all 0.28s ease'
                         }}
                       >
@@ -2617,11 +2618,11 @@ export default function App() {
                         background: isProtectionEnabled ? 'rgba(0, 230, 118, 0.12)' : 'rgba(255, 171, 0, 0.12)',
                         border: isProtectionEnabled ? '1px solid rgba(0, 230, 118, 0.35)' : '1px solid rgba(255, 171, 0, 0.35)',
                         fontSize: 12,
-                        color: isProtectionEnabled ? '#00e676' : '#ffab00',
+                        color: isProtectionEnabled ? (theme === 'crystal' ? '#00e676' : '#059669') : '#d97706',
                         fontWeight: 600
                       }}
                     >
-                      <Zap size={13} color={isProtectionEnabled ? '#00e676' : '#ffab00'} />
+                      <Zap size={13} color={isProtectionEnabled ? '#00e676' : '#d97706'} />
                       {isProtectionEnabled
                         ? '⚡ Ping: 13ms (Ultra-Fast Cloudflare Anycast) • 100% Full ISP Speed (No Slowdown)'
                         : '○ Protection Paused (Default Local ISP DHCP Active)'}
@@ -2634,11 +2635,12 @@ export default function App() {
                       style={{
                         padding: '14px 16px',
                         borderRadius: 12,
-                        background: 'rgba(0,0,0,0.32)',
-                        border: '1px solid rgba(255,255,255,0.06)'
+                        background: theme === 'crystal' ? 'rgba(0,0,0,0.32)' : '#ffffff',
+                        border: theme === 'crystal' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.08)',
+                        boxShadow: theme === 'crystal' ? 'none' : '0 2px 8px rgba(0,0,0,0.03)'
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#00e676', fontSize: 13, fontWeight: 600 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: theme === 'crystal' ? '#00e676' : '#059669', fontSize: 13, fontWeight: 600 }}>
                         <Eye size={16} /> Try our private browser
                       </div>
                       <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 4 }}>
@@ -2650,13 +2652,14 @@ export default function App() {
                       style={{
                         padding: '14px 16px',
                         borderRadius: 12,
-                        background: 'rgba(0,0,0,0.32)',
-                        border: '1px solid rgba(255,255,255,0.06)'
+                        background: theme === 'crystal' ? 'rgba(0,0,0,0.32)' : '#ffffff',
+                        border: theme === 'crystal' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.08)',
+                        boxShadow: theme === 'crystal' ? 'none' : '0 2px 8px rgba(0,0,0,0.03)'
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <PieChart size={16} color="#00e676" />
-                        <span style={{ fontSize: 18, fontWeight: 700, color: '#00e676' }}>48.5 MB</span>
+                        <span style={{ fontSize: 18, fontWeight: 700, color: theme === 'crystal' ? '#00e676' : '#059669' }}>48.5 MB</span>
                       </div>
                       <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 4 }}>
                         data saved
@@ -2667,13 +2670,14 @@ export default function App() {
                       style={{
                         padding: '14px 16px',
                         borderRadius: 12,
-                        background: 'rgba(0,0,0,0.32)',
-                        border: '1px solid rgba(255,255,255,0.06)'
+                        background: theme === 'crystal' ? 'rgba(0,0,0,0.32)' : '#ffffff',
+                        border: theme === 'crystal' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.08)',
+                        boxShadow: theme === 'crystal' ? 'none' : '0 2px 8px rgba(0,0,0,0.03)'
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <ShieldCheck size={16} color="#00e676" />
-                        <span style={{ fontSize: 18, fontWeight: 700, color: '#00e676' }}>1,280</span>
+                        <span style={{ fontSize: 18, fontWeight: 700, color: theme === 'crystal' ? '#00e676' : '#059669' }}>1,280</span>
                       </div>
                       <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 4 }}>
                         total blocked
@@ -2687,13 +2691,14 @@ export default function App() {
                   className="glass-card"
                   style={{
                     padding: '24px 20px',
-                    background: 'rgba(16, 20, 30, 0.95)',
+                    background: theme === 'crystal' ? 'rgba(16, 20, 30, 0.95)' : '#ffffff',
                     borderRadius: 16,
-                    border: '1px solid rgba(255,255,255,0.08)'
+                    border: theme === 'crystal' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.08)',
+                    boxShadow: theme === 'crystal' ? 'none' : '0 4px 20px rgba(0,0,0,0.04)'
                   }}
                 >
                   <div style={{ marginBottom: 18 }}>
-                    <h2 style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>Protection</h2>
+                    <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>Protection</h2>
                     <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>
                       Manage individual filtering engines and system protection layers
                     </p>
@@ -2756,23 +2761,23 @@ export default function App() {
                             justifyContent: 'space-between',
                             alignItems: 'center',
                             padding: '16px 12px',
-                            borderBottom: idx < 5 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                            borderBottom: idx < 5 ? (theme === 'crystal' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.06)') : 'none',
                             borderRadius: 8
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, minWidth: 0, paddingRight: 16 }}>
                             <div style={{ opacity: isItemActive ? 1 : 0.4 }}>
-                              <Icon size={22} color={isItemActive ? '#00e676' : '#718096'} />
+                              <Icon size={22} color={isItemActive ? (theme === 'crystal' ? '#00e676' : '#059669') : '#718096'} />
                             </div>
                             <div>
-                              <div style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>
+                              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
                                 {item.title}
                               </div>
                               <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
                                 {item.desc}
                               </div>
                               {item.extra && isItemActive && (
-                                <div style={{ fontSize: 11, color: '#00e676', marginTop: 3, fontWeight: 500 }}>
+                                <div style={{ fontSize: 11, color: theme === 'crystal' ? '#00e676' : '#059669', marginTop: 3, fontWeight: 500 }}>
                                   {item.extra}
                                 </div>
                               )}
@@ -2886,11 +2891,11 @@ export default function App() {
                       marginTop: 14,
                       padding: '12px 16px',
                       borderRadius: 12,
-                      background: 'rgba(15, 7, 32, 0.65)',
+                      background: theme === 'crystal' ? 'rgba(15, 7, 32, 0.65)' : 'rgba(164, 118, 255, 0.1)',
                       border: '1px solid rgba(164, 118, 255, 0.35)',
                       fontSize: 13,
                       lineHeight: 1.5,
-                      color: '#fff',
+                      color: 'var(--text-primary)',
                       fontStyle: 'italic'
                     }}
                   >
@@ -3004,7 +3009,7 @@ export default function App() {
                         </span>
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
-                        Active Hardware Adapter: <strong style={{ color: '#fff' }}>{activeSystemDns.adapter}</strong> • Active DNS IPs: <strong style={{ color: '#00f2fe', fontFamily: 'monospace' }}>{activeSystemDns.dnsServers.length > 0 ? activeSystemDns.dnsServers.join(', ') : '192.168.18.1 (Automatic DHCP)'}</strong>
+                        Active Hardware Adapter: <strong style={{ color: 'var(--text-primary)' }}>{activeSystemDns.adapter}</strong> • Active DNS IPs: <strong style={{ color: theme === 'crystal' ? '#00f2fe' : '#0070e0', fontFamily: 'monospace' }}>{activeSystemDns.dnsServers.length > 0 ? activeSystemDns.dnsServers.join(', ') : '192.168.18.1 (Automatic DHCP)'}</strong>
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
@@ -3063,21 +3068,26 @@ export default function App() {
                             alignItems: 'center',
                             padding: '12px 16px',
                             borderRadius: 10,
-                            background: isSelected ? 'rgba(0,242,254,0.14)' : 'rgba(0,0,0,0.28)',
-                            border: isSelected ? '1px solid #00f2fe' : '1px solid rgba(255,255,255,0.06)',
+                            background: isSelected
+                              ? (theme === 'crystal' ? 'rgba(0,242,254,0.14)' : 'rgba(0,119,255,0.08)')
+                              : (theme === 'crystal' ? 'rgba(0,0,0,0.28)' : '#ffffff'),
+                            border: isSelected
+                              ? (theme === 'crystal' ? '1px solid #00f2fe' : '1px solid #0077ff')
+                              : (theme === 'crystal' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.08)'),
+                            boxShadow: theme === 'crystal' ? 'none' : '0 2px 6px rgba(0,0,0,0.03)',
                             cursor: 'pointer',
                             transition: 'all 0.18s ease'
                           }}
                         >
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ fontWeight: 700, fontSize: 13.5, color: '#fff' }}>{name}</span>
+                              <span style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--text-primary)' }}>{name}</span>
                               {isRealActiveInWindows ? (
-                                <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, background: 'rgba(0,230,118,0.2)', color: '#00e676', fontWeight: 700, border: '1px solid #00e676' }}>
+                                <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, background: theme === 'crystal' ? 'rgba(0,230,118,0.2)' : 'rgba(5,150,105,0.15)', color: theme === 'crystal' ? '#00e676' : '#059669', fontWeight: 700, border: '1px solid currentColor' }}>
                                   ✓ ACTIVE IN WINDOWS
                                 </span>
                               ) : (
-                                <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)' }}>
+                                <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, background: theme === 'crystal' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', color: 'var(--text-secondary)' }}>
                                   Not Applied
                                 </span>
                               )}
@@ -3087,7 +3097,7 @@ export default function App() {
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                             <div style={{ textAlign: 'right' }}>
-                              <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#00f2fe', fontWeight: 600 }}>{ips}</div>
+                              <div style={{ fontSize: 12, fontFamily: 'monospace', color: theme === 'crystal' ? '#00f2fe' : '#0070e0', fontWeight: 600 }}>{ips}</div>
                               <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginTop: 2 }}>
                                 {isSelected ? (primaryIp === 'DHCP' ? 'Direct local connection' : `Latency: ${dnsLatencyMs}ms`) : 'Click to select'}
                               </div>
@@ -3103,9 +3113,9 @@ export default function App() {
                               style={{
                                 padding: '6px 14px',
                                 fontSize: 11.5,
-                                background: isRealActiveInWindows ? 'rgba(0,230,118,0.2)' : undefined,
-                                borderColor: isRealActiveInWindows ? '#00e676' : undefined,
-                                color: isRealActiveInWindows ? '#00e676' : '#fff'
+                                background: isRealActiveInWindows ? (theme === 'crystal' ? 'rgba(0,230,118,0.2)' : 'rgba(5,150,105,0.15)') : undefined,
+                                borderColor: isRealActiveInWindows ? (theme === 'crystal' ? '#00e676' : '#059669') : undefined,
+                                color: isRealActiveInWindows ? (theme === 'crystal' ? '#00e676' : '#059669') : '#fff'
                               }}
                             >
                               {isRealActiveInWindows ? 'Applied ✓' : isApplyingDns ? 'Applying…' : primaryIp === 'DHCP' ? 'Restore Default' : 'Apply (Admin)'}

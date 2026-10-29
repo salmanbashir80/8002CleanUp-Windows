@@ -23,15 +23,292 @@
 }
 
 [data-theme="pearl"] {
-  --bg-gradient: radial-gradient(ellipse at 50% 0%, #f1f5f9 0%, #e2e8f0 60%, #cbd5e1 100%);
-  --sidebar-bg: rgba(255, 255, 255, 0.92);
-  --glass-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(248, 250, 252, 0.72) 100%);
-  --glass-border: rgba(0, 0, 0, 0.08);
-  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.95);
-  --glass-shadow: 0 10px 24px 0 rgba(15, 23, 42, 0.08);
+  --bg-gradient: radial-gradient(ellipse at 50% 0%, #ffffff 0%, #f0f4f9 60%, #e2e8f0 100%);
+  --sidebar-bg: rgba(255, 255, 255, 0.94);
+  --glass-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.88) 100%);
+  --glass-border: rgba(0, 0, 0, 0.09);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 1);
+  --glass-shadow: 0 10px 28px 0 rgba(15, 23, 42, 0.06);
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-tertiary: #64748b;
+
+  --accent-cyan: #0066cc;
+  --accent-blue: #0284c7;
+  --accent-purple: #7c3aed;
+  --accent-mint: #059669;
+  --accent-coral: #dc2626;
+  --accent-amber: #d97706;
+}
+
+/* ============================================================= */
+/* Light Mode (Pearl Glass) Comprehensive Visual System          */
+/* ============================================================= */
+[data-theme="pearl"] .aurora-blob {
+  opacity: 0.04;
+}
+
+[data-theme="pearl"] .sidebar {
+  background: var(--sidebar-bg);
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 4px 0 24px rgba(15, 23, 42, 0.04);
+}
+
+[data-theme="pearl"] .brand-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="pearl"] .nav-section-title {
+  color: #64748b;
+}
+
+[data-theme="pearl"] .nav-btn {
+  color: #475569;
+}
+
+[data-theme="pearl"] .nav-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: #0f172a;
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="pearl"] .nav-btn.active {
+  background: linear-gradient(90deg, rgba(0, 119, 255, 0.12), rgba(0, 180, 216, 0.14));
+  border-color: rgba(0, 119, 255, 0.35);
+  color: #0066cc;
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(0, 119, 255, 0.1);
+}
+
+[data-theme="pearl"] .nav-badge-count {
+  background: rgba(0, 0, 0, 0.06);
+  color: #475569;
+}
+
+[data-theme="pearl"] .nav-sub-btn {
+  color: #64748b;
+}
+
+[data-theme="pearl"] .nav-sub-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: #0f172a;
+}
+
+[data-theme="pearl"] .nav-sub-btn.active {
+  background: rgba(0, 119, 255, 0.1);
+  border-color: rgba(0, 119, 255, 0.28);
+  color: #0066cc;
+}
+
+[data-theme="pearl"] .sidebar-hud-card {
+  background: rgba(248, 250, 252, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="pearl"] .sidebar-action-pill {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #334155;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="pearl"] .sidebar-action-pill:hover {
+  background: rgba(0, 119, 255, 0.08);
+  border-color: #0077ff;
+  color: #0066cc;
+}
+
+[data-theme="pearl"] .sticky-frozen-header {
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="pearl"] .segmented-tab-bar {
+  background: rgba(226, 232, 240, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="pearl"] .segmented-tab-btn {
+  color: #475569;
+}
+
+[data-theme="pearl"] .segmented-tab-btn:hover {
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="pearl"] .segmented-tab-btn.active {
+  background: #ffffff;
+  border-color: rgba(0, 119, 255, 0.3);
+  color: #0066cc;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="pearl"] .toolbar-net-meter {
+  background: #ffffff;
+  border: 1px solid rgba(0, 119, 255, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="pearl"] .net-down-val {
+  color: #0070e0;
+}
+
+[data-theme="pearl"] .net-up-val {
+  color: #e11d48;
+}
+
+[data-theme="pearl"] .net-meter-divider {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="pearl"] .net-meter-ping {
+  color: #64748b;
+}
+
+[data-theme="pearl"] .btn-secondary {
+  background: #ffffff;
+  color: #1e293b;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="pearl"] .btn-secondary:hover {
+  background: #f8fafc;
+  border-color: #0077ff;
+  color: #0066cc;
+}
+
+[data-theme="pearl"] .input-box {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: #0f172a;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="pearl"] .input-box:focus {
+  border-color: #0077ff;
+  box-shadow: 0 0 0 3px rgba(0, 119, 255, 0.15);
+}
+
+[data-theme="pearl"] .live-active-task-pill.idle {
+  background: rgba(5, 150, 105, 0.08);
+  border: 1px solid rgba(5, 150, 105, 0.3);
+  color: #1e293b;
+}
+
+[data-theme="pearl"] .live-active-task-pill.active-pulse {
+  background: rgba(0, 119, 255, 0.08);
+  border: 1px solid rgba(0, 119, 255, 0.4);
+  box-shadow: 0 0 15px rgba(0, 119, 255, 0.15);
+}
+
+[data-theme="pearl"] .sticky-status-banner {
+  background: rgba(139, 61, 255, 0.08);
+  border: 1px solid rgba(139, 61, 255, 0.25);
+  color: #4a154b;
+}
+
+[data-theme="pearl"] .status-close-btn {
+  color: #4a154b;
+}
+
+[data-theme="pearl"] .glass-card {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+[data-theme="pearl"] .scanner-master-deck {
+  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid rgba(0, 119, 255, 0.18);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+[data-theme="pearl"] .scanner-main-headline {
+  color: #0f172a !important;
+}
+
+[data-theme="pearl"] .scanner-title-badge {
+  color: #0066cc;
+}
+
+[data-theme="pearl"] .pillar-card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="pearl"] .pillar-card:hover {
+  background: #f8fafc;
+  border-color: rgba(0, 119, 255, 0.3);
+}
+
+[data-theme="pearl"] .quick-action-pill-btn {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #0f172a;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="pearl"] .quick-action-pill-btn:hover {
+  background: #f1f5f9;
+  border-color: #0077ff;
+  color: #0066cc;
+}
+
+[data-theme="pearl"] .modal-card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.2);
+  color: #0f172a;
+}
+
+/* Universal Light Mode Card, Row, & Text Contrast Overrides */
+[data-theme="pearl"] .scroll-table-container > div {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03) !important;
+}
+
+[data-theme="pearl"] .scroll-table-container > div:hover {
+  background: #f8fafc !important;
+  border-color: rgba(0, 119, 255, 0.25) !important;
+}
+
+[data-theme="pearl"] div[style*="background: rgba(0, 0, 0"],
+[data-theme="pearl"] div[style*="background: rgba(0,0,0"],
+[data-theme="pearl"] div[style*="background: 'rgba(0, 0, 0"],
+[data-theme="pearl"] div[style*="background: 'rgba(0,0,0"] {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03) !important;
+}
+
+[data-theme="pearl"] div[style*="border: 1px solid rgba(255, 255, 255"],
+[data-theme="pearl"] div[style*="border: 1px solid rgba(255,255,255"] {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="pearl"] h1,
+[data-theme="pearl"] h2,
+[data-theme="pearl"] h3,
+[data-theme="pearl"] h4,
+[data-theme="pearl"] strong[style*="color: #fff"],
+[data-theme="pearl"] strong[style*="color: rgb(255, 255, 255)"],
+[data-theme="pearl"] span[style*="color: #fff"],
+[data-theme="pearl"] span[style*="color: rgb(255, 255, 255)"],
+[data-theme="pearl"] div[style*="color: #fff"],
+[data-theme="pearl"] div[style*="color: rgb(255, 255, 255)"] {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="pearl"] .metric-pill {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: var(--text-secondary);
 }
 
 * {

@@ -429,7 +429,7 @@ export default function RegistryCleaner({ setStatusBanner }: Props) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <ShieldCheck size={16} color="#18e299" />
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Registry Integrity</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Registry Integrity</span>
             </div>
           </div>
 
@@ -777,7 +777,7 @@ export default function RegistryCleaner({ setStatusBanner }: Props) {
             ) : !hasScanned ? (
               <div style={{ padding: 60, textAlign: 'center' }}>
                 <Database size={42} color="#00e5ff" style={{ margin: '0 auto 12px', opacity: 0.85 }} />
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>Windows Registry Cleaner Ready</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Windows Registry Cleaner Ready</div>
                 <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginTop: 6, maxWidth: 440, margin: '6px auto 16px' }}>
                   Select the categories you want to inspect on the left and click "Scan for Issues" to start an in-depth audit.
                 </div>
@@ -792,7 +792,7 @@ export default function RegistryCleaner({ setStatusBanner }: Props) {
             ) : filteredIssues.length === 0 ? (
               <div style={{ padding: 60, textAlign: 'center' }}>
                 <CheckCircle2 size={42} color="#18e299" style={{ margin: '0 auto 12px' }} />
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>Windows Registry is Clean!</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>Windows Registry is Clean!</div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
                   {issues.length === 0
                     ? 'No orphaned references or obsolete entries detected across your Windows Registry.'
@@ -935,7 +935,7 @@ export default function RegistryCleaner({ setStatusBanner }: Props) {
               </div>
             </div>
 
-            <p style={{ fontSize: 13.5, color: '#fff', lineHeight: 1.5, margin: '14px 0 10px' }}>
+            <p style={{ fontSize: 13.5, color: 'var(--text-primary)', lineHeight: 1.5, margin: '14px 0 10px' }}>
               <strong>Do you want to back up the registry before making changes?</strong>
             </p>
             <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 20px' }}>
@@ -1027,7 +1027,7 @@ export default function RegistryCleaner({ setStatusBanner }: Props) {
             {fixedCount !== null ? (
               <div style={{ padding: '24px 10px', textAlign: 'center' }}>
                 <CheckCircle2 size={50} color="#00e676" style={{ margin: '0 auto 14px' }} />
-                <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 8px', color: '#fff' }}>
+                <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 8px', color: 'var(--text-primary)' }}>
                   All Selected Issues Fixed!
                 </h3>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '0 0 16px' }}>
@@ -1050,7 +1050,7 @@ export default function RegistryCleaner({ setStatusBanner }: Props) {
                   >
                     <div>
                       <div style={{ fontSize: 11, color: '#00e5ff', fontWeight: 700 }}>REGISTRY BACKUP CREATED</div>
-                      <div style={{ fontSize: 12, color: '#fff', fontFamily: 'monospace', marginTop: 2 }}>
+                      <div style={{ fontSize: 12, color: 'var(--text-primary)', fontFamily: 'monospace', marginTop: 2 }}>
                         {latestBackupPath.split('\\').pop()}
                       </div>
                     </div>
@@ -1125,7 +1125,7 @@ export default function RegistryCleaner({ setStatusBanner }: Props) {
                     <div style={{ fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>
                       Data / Missing Target
                     </div>
-                    <div style={{ fontSize: 12.5, color: '#fff', marginTop: 2, wordBreak: 'break-all' }}>
+                    <div style={{ fontSize: 12.5, color: 'var(--text-primary)', marginTop: 2, wordBreak: 'break-all' }}>
                       {currentIssue.details}
                     </div>
                   </div>
@@ -1266,7 +1266,7 @@ export default function RegistryCleaner({ setStatusBanner }: Props) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
                       <FileText size={18} color="#00e5ff" style={{ flexShrink: 0 }} />
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {b.filename}
                         </div>
                         <div style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'flex', gap: 10, marginTop: 2 }}>
