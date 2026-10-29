@@ -1156,7 +1156,7 @@ export default function App() {
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 6 }}>
-            <span style={{ color: 'var(--text-secondary)' }}>v2.3.8 Pro</span>
+            <span style={{ color: 'var(--text-secondary)' }}>v2.3.9 Pro</span>
             <span style={{ color: '#18e299', fontWeight: 600 }}>● Live Engine</span>
           </div>
           <button
@@ -1407,6 +1407,186 @@ export default function App() {
                 <button className="btn-primary" onClick={() => setActiveModule('network_shield')}>
                   <Bot size={15} /> Nova AI & AdGuard Shield
                 </button>
+              </div>
+            </div>
+
+            {/* Active Cleaning Progress Banner (Non-Blocking) */}
+            {isCleaning && (
+              <div className="clean-progress-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontWeight: 600, color: '#18e299', fontSize: 14 }}>
+                    Purging System Junk & Standby Residuals…
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#00e5ff', fontSize: 13 }}>
+                    Freed: {formatBytes(cleanProgress.freedBytes || 0)} ({cleanProgress.items || 0} items)
+                  </div>
+                </div>
+                <div className="clean-progress-bar">
+                  <div className="clean-progress-fill" style={{ width: '100%' }} />
+                </div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                  Target: {cleanProgress.target || 'Processing directory contents safely…'}
+                </div>
+              </div>
+            )}
+
+            {/* SMART CARE MASTER COMMAND CENTER SCANNER DECK (PROMOTED TO HERO TOP) */}
+            <div className="scanner-master-deck">
+              <div className="scanner-hero-row">
+                {/* Concentric Holographic Scan Orb with Active Pulse Rings */}
+                <div className="scanner-orb-wrap">
+                  <div className={`scanner-radar-pulse ${isScanning || isCleaning ? 'active' : ''}`} />
+                  <div className="scanner-radar-ping" />
+                  <button
+                    className="neon-scan-orb-large"
+                    onClick={handleRunScan}
+                    disabled={isScanning || isCleaning}
+                    style={{ opacity: isCleaning ? 0.75 : 1 }}
+                    title="Click to run Smart Care Full System Diagnostic"
+                  >
+                    <Play size={28} fill="#fff" />
+                    <span>{isCleaning ? 'CLEANING' : isScanning ? 'SCANNING' : 'SCAN'}</span>
+                  </button>
+                </div>
+
+                {/* Dynamic Analysis Headlines & Scanner Ticker */}
+                <div className="scanner-info-wrap">
+                  <div className="scanner-title-badge">
+                    <Sparkles size={13} color="#00f2fe" />
+                    <span>Smart Care Master Diagnostic Deck • Windows 10 & 11</span>
+                  </div>
+                  <div className="scanner-main-headline">
+                    {isCleaning
+                      ? 'Purging safe temporary residuals & cache files asynchronously...'
+                      : isScanning
+                      ? (scanStage || 'Deep inspecting 13 Windows Subsystems...')
+                      : scanResult
+                      ? `Analysis Complete — ${formatBytes(scanResult.totalBytes)} Safe to Reclaim`
+                      : 'Smart Care Full System Diagnostic Check'}
+                  </div>
+                  <div className="scanner-main-subtext">
+                    {isScanning
+                      ? 'Forensic scan running in background without freezing UI. Inspecting Temp, Prefetch, GPU Shaders & Registry.'
+                      : scanResult
+                      ? `Identified ${scanResult.itemCount || 138} safe targets across DirectX caches, temporary directories and residual files.`
+                      : 'One-click full system purge, memory standby flush, DNS cache acceleration & cyber threat check.'}
+                  </div>
+
+                  {/* 3 Health Pillar Cards (CleanMyMac X Pro Style) */}
+                  <div className="pillar-health-grid">
+                    {/* Pillar 1: Disk Hygiene */}
+                    <div className="pillar-card">
+                      <div className="pillar-header">
+                        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#ff4757', display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <Trash2 size={12} color="#ff4757" /> Disk Hygiene
+                        </span>
+                        <span className="metric-pill" style={{ color: '#00e676', borderColor: 'rgba(0,230,118,0.3)', padding: '2px 6px', fontSize: 10 }}>Safe</span>
+                      </div>
+                      <div className="pillar-metric" style={{ color: '#ff4757' }}>
+                        {scanResult ? formatBytes(scanResult.totalBytes) : '829.10 MB'}
+                      </div>
+                      <div className="pillar-sub">
+                        {scanResult ? `${scanResult.itemCount || 138} Files Cleanable` : '%TEMP%, Shaders, Crash Dumps'}
+                      </div>
+                    </div>
+
+                    {/* Pillar 2: Memory & Boost */}
+                    <div className="pillar-card">
+                      <div className="pillar-header">
+                        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#ffab00', display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <Zap size={12} color="#ffab00" /> Speed & RAM
+                        </span>
+                        <span className="metric-pill" style={{ color: '#ffab00', borderColor: 'rgba(255,171,0,0.3)', padding: '2px 6px', fontSize: 10 }}>Turbo</span>
+                      </div>
+                      <div className="pillar-metric" style={{ color: '#ffab00' }}>
+                        {formatBytes(telemetry.ramFreeBytes)}
+                      </div>
+                      <div className="pillar-sub">
+                        Standby Freeable • {Math.round((telemetry.ramUsedBytes / telemetry.ramTotalBytes) * 100)}% Load
+                      </div>
+                    </div>
+
+                    {/* Pillar 3: Security & Accounts */}
+                    <div className="pillar-card">
+                      <div className="pillar-header">
+                        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#00f2fe', display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <Shield size={12} color="#00f2fe" /> Cyber Shield
+                        </span>
+                        <span className="metric-pill" style={{ color: '#00f2fe', borderColor: 'rgba(0,242,254,0.3)', padding: '2px 6px', fontSize: 10 }}>Active</span>
+                      </div>
+                      <div className="pillar-metric" style={{ color: '#00f2fe' }}>
+                        100% Guard
+                      </div>
+                      <div className="pillar-sub">
+                        AdGuard Online • 14 Accounts Verified
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions Deck: Hero One-Click Clean + 4 Balanced Quick Pills */}
+              <div className="scan-actions-deck">
+                <button
+                  className="hero-clean-btn"
+                  onClick={handleMasterCleanAndBoost}
+                  disabled={isCleaning || (!scanResult && !isScanning)}
+                >
+                  <Sparkles size={16} />
+                  <span>
+                    {isCleaning
+                      ? 'Purging Selected Items & Standby RAM in Background...'
+                      : `✨ One-Click Smart Purge & System Boost (${scanResult ? formatBytes(scanResult.totalBytes) : '829.10 MB'})`}
+                  </span>
+                </button>
+
+                <div className="quick-action-cards-grid">
+                  <button className="quick-action-pill-btn" onClick={handleOptimizeRam} disabled={isCleaning}>
+                    <Zap size={14} color="#ffab00" />
+                    <div style={{ textAlign: 'left' }}>
+                      <div>Purge Standby RAM</div>
+                      <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Free physical memory working set</div>
+                    </div>
+                  </button>
+
+                  <button className="quick-action-pill-btn" onClick={handleFlushDns} disabled={isCleaning}>
+                    <RotateCcw size={14} color="#00f2fe" />
+                    <div style={{ textAlign: 'left' }}>
+                      <div>Flush DNS Cache</div>
+                      <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Clear obsolete resolver entries</div>
+                    </div>
+                  </button>
+
+                  <button
+                    className="quick-action-pill-btn"
+                    onClick={handleToggleGameTurbo}
+                    disabled={isCleaning}
+                    style={{
+                      background: gameTurbo ? 'rgba(0, 230, 118, 0.15)' : 'rgba(255,255,255,0.05)',
+                      borderColor: gameTurbo ? '#00e676' : 'rgba(255,255,255,0.1)'
+                    }}
+                  >
+                    <Gamepad2 size={14} color={gameTurbo ? '#00e676' : '#fff'} />
+                    <div style={{ textAlign: 'left' }}>
+                      <div>{gameTurbo ? 'Game Turbo: Active' : 'Game Turbo Mode'}</div>
+                      <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Priority CPU/GPU allocation</div>
+                    </div>
+                  </button>
+
+                  <button className="quick-action-pill-btn" onClick={() => setActiveModule('deep_scan')} disabled={isCleaning}>
+                    <Shield size={14} color="#a66bff" />
+                    <div style={{ textAlign: 'left' }}>
+                      <div>13-Phase Deep Audit</div>
+                      <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Full forensic layer analysis</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* System Info Footnote */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-secondary)', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 10 }}>
+                <span>Windows Uptime: {Math.floor(telemetry.uptimeSeconds / 3600)}h {Math.floor((telemetry.uptimeSeconds % 3600) / 60)}m</span>
+                <span>Active Host: {telemetry.hostname} • Battery Health: {telemetry.battery.healthPercent}%</span>
               </div>
             </div>
 
@@ -1673,186 +1853,6 @@ export default function App() {
                 <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
                   NTFS raw sector restoration with live self-test
                 </div>
-              </div>
-            </div>
-
-            {/* Active Cleaning Progress Banner (Non-Blocking) */}
-            {isCleaning && (
-              <div className="clean-progress-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontWeight: 600, color: '#18e299', fontSize: 14 }}>
-                    Purging System Junk & Standby Residuals…
-                  </div>
-                  <div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#00e5ff', fontSize: 13 }}>
-                    Freed: {formatBytes(cleanProgress.freedBytes || 0)} ({cleanProgress.items || 0} items)
-                  </div>
-                </div>
-                <div className="clean-progress-bar">
-                  <div className="clean-progress-fill" style={{ width: '100%' }} />
-                </div>
-                <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
-                  Target: {cleanProgress.target || 'Processing directory contents safely…'}
-                </div>
-              </div>
-            )}
-
-            {/* SMART CARE MASTER COMMAND CENTER SCANNER DECK */}
-            <div className="scanner-master-deck">
-              <div className="scanner-hero-row">
-                {/* Concentric Holographic Scan Orb with Active Pulse Rings */}
-                <div className="scanner-orb-wrap">
-                  <div className={`scanner-radar-pulse ${isScanning || isCleaning ? 'active' : ''}`} />
-                  <div className="scanner-radar-ping" />
-                  <button
-                    className="neon-scan-orb-large"
-                    onClick={handleRunScan}
-                    disabled={isScanning || isCleaning}
-                    style={{ opacity: isCleaning ? 0.75 : 1 }}
-                    title="Click to run Smart Care Full System Diagnostic"
-                  >
-                    <Play size={28} fill="#fff" />
-                    <span>{isCleaning ? 'CLEANING' : isScanning ? 'SCANNING' : 'SCAN'}</span>
-                  </button>
-                </div>
-
-                {/* Dynamic Analysis Headlines & Scanner Ticker */}
-                <div className="scanner-info-wrap">
-                  <div className="scanner-title-badge">
-                    <Sparkles size={13} color="#00f2fe" />
-                    <span>Smart Care Master Diagnostic Deck • Windows 10 & 11</span>
-                  </div>
-                  <div className="scanner-main-headline">
-                    {isCleaning
-                      ? 'Purging safe temporary residuals & cache files asynchronously...'
-                      : isScanning
-                      ? (scanStage || 'Deep inspecting 13 Windows Subsystems...')
-                      : scanResult
-                      ? `Analysis Complete — ${formatBytes(scanResult.totalBytes)} Safe to Reclaim`
-                      : 'Smart Care Full System Diagnostic Check'}
-                  </div>
-                  <div className="scanner-main-subtext">
-                    {isScanning
-                      ? 'Forensic scan running in background without freezing UI. Inspecting Temp, Prefetch, GPU Shaders & Registry.'
-                      : scanResult
-                      ? `Identified ${scanResult.itemCount || 138} safe targets across DirectX caches, temporary directories and residual files.`
-                      : 'One-click full system purge, memory standby flush, DNS cache acceleration & cyber threat check.'}
-                  </div>
-
-                  {/* 3 Health Pillar Cards (CleanMyMac X Pro Style) */}
-                  <div className="pillar-health-grid">
-                    {/* Pillar 1: Disk Hygiene */}
-                    <div className="pillar-card">
-                      <div className="pillar-header">
-                        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#ff4757', display: 'flex', alignItems: 'center', gap: 5 }}>
-                          <Trash2 size={12} color="#ff4757" /> Disk Hygiene
-                        </span>
-                        <span className="metric-pill" style={{ color: '#00e676', borderColor: 'rgba(0,230,118,0.3)', padding: '2px 6px', fontSize: 10 }}>Safe</span>
-                      </div>
-                      <div className="pillar-metric" style={{ color: '#ff4757' }}>
-                        {scanResult ? formatBytes(scanResult.totalBytes) : '829.10 MB'}
-                      </div>
-                      <div className="pillar-sub">
-                        {scanResult ? `${scanResult.itemCount || 138} Files Cleanable` : '%TEMP%, Shaders, Crash Dumps'}
-                      </div>
-                    </div>
-
-                    {/* Pillar 2: Memory & Boost */}
-                    <div className="pillar-card">
-                      <div className="pillar-header">
-                        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#ffab00', display: 'flex', alignItems: 'center', gap: 5 }}>
-                          <Zap size={12} color="#ffab00" /> Speed & RAM
-                        </span>
-                        <span className="metric-pill" style={{ color: '#ffab00', borderColor: 'rgba(255,171,0,0.3)', padding: '2px 6px', fontSize: 10 }}>Turbo</span>
-                      </div>
-                      <div className="pillar-metric" style={{ color: '#ffab00' }}>
-                        {formatBytes(telemetry.ramFreeBytes)}
-                      </div>
-                      <div className="pillar-sub">
-                        Standby Freeable • {Math.round((telemetry.ramUsedBytes / telemetry.ramTotalBytes) * 100)}% Load
-                      </div>
-                    </div>
-
-                    {/* Pillar 3: Security & Accounts */}
-                    <div className="pillar-card">
-                      <div className="pillar-header">
-                        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#00f2fe', display: 'flex', alignItems: 'center', gap: 5 }}>
-                          <Shield size={12} color="#00f2fe" /> Cyber Shield
-                        </span>
-                        <span className="metric-pill" style={{ color: '#00f2fe', borderColor: 'rgba(0,242,254,0.3)', padding: '2px 6px', fontSize: 10 }}>Active</span>
-                      </div>
-                      <div className="pillar-metric" style={{ color: '#00f2fe' }}>
-                        100% Guard
-                      </div>
-                      <div className="pillar-sub">
-                        AdGuard Online • 14 Accounts Verified
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions Deck: Hero One-Click Clean + 4 Balanced Quick Pills */}
-              <div className="scan-actions-deck">
-                <button
-                  className="hero-clean-btn"
-                  onClick={handleMasterCleanAndBoost}
-                  disabled={isCleaning || (!scanResult && !isScanning)}
-                >
-                  <Sparkles size={16} />
-                  <span>
-                    {isCleaning
-                      ? 'Purging Selected Items & Standby RAM in Background...'
-                      : `✨ One-Click Smart Purge & System Boost (${scanResult ? formatBytes(scanResult.totalBytes) : '829.10 MB'})`}
-                  </span>
-                </button>
-
-                <div className="quick-action-cards-grid">
-                  <button className="quick-action-pill-btn" onClick={handleOptimizeRam} disabled={isCleaning}>
-                    <Zap size={14} color="#ffab00" />
-                    <div style={{ textAlign: 'left' }}>
-                      <div>Purge Standby RAM</div>
-                      <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Free physical memory working set</div>
-                    </div>
-                  </button>
-
-                  <button className="quick-action-pill-btn" onClick={handleFlushDns} disabled={isCleaning}>
-                    <RotateCcw size={14} color="#00f2fe" />
-                    <div style={{ textAlign: 'left' }}>
-                      <div>Flush DNS Cache</div>
-                      <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Clear obsolete resolver entries</div>
-                    </div>
-                  </button>
-
-                  <button
-                    className="quick-action-pill-btn"
-                    onClick={handleToggleGameTurbo}
-                    disabled={isCleaning}
-                    style={{
-                      background: gameTurbo ? 'rgba(0, 230, 118, 0.15)' : 'rgba(255,255,255,0.05)',
-                      borderColor: gameTurbo ? '#00e676' : 'rgba(255,255,255,0.1)'
-                    }}
-                  >
-                    <Gamepad2 size={14} color={gameTurbo ? '#00e676' : '#fff'} />
-                    <div style={{ textAlign: 'left' }}>
-                      <div>{gameTurbo ? 'Game Turbo: Active' : 'Game Turbo Mode'}</div>
-                      <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Priority CPU/GPU allocation</div>
-                    </div>
-                  </button>
-
-                  <button className="quick-action-pill-btn" onClick={() => setActiveModule('deep_scan')} disabled={isCleaning}>
-                    <Shield size={14} color="#a66bff" />
-                    <div style={{ textAlign: 'left' }}>
-                      <div>13-Phase Deep Audit</div>
-                      <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Full forensic layer analysis</div>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              {/* System Info Footnote */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-secondary)', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 10 }}>
-                <span>Windows Uptime: {Math.floor(telemetry.uptimeSeconds / 3600)}h {Math.floor((telemetry.uptimeSeconds % 3600) / 60)}m</span>
-                <span>Active Host: {telemetry.hostname} • Battery Health: {telemetry.battery.healthPercent}%</span>
               </div>
             </div>
 
