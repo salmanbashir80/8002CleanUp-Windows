@@ -1156,7 +1156,7 @@ export default function App() {
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 6 }}>
-            <span style={{ color: 'var(--text-secondary)' }}>v2.3.7 Pro</span>
+            <span style={{ color: 'var(--text-secondary)' }}>v2.3.8 Pro</span>
             <span style={{ color: '#18e299', fontWeight: 600 }}>● Live Engine</span>
           </div>
           <button
@@ -1188,7 +1188,7 @@ export default function App() {
         <header className="sticky-frozen-header">
           <div className="sticky-frozen-bar">
             {/* Left: Segmented Tabs or Active Module Title */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 1, minWidth: 0, overflowX: 'auto' }}>
               {CLEANUP_TABS.some(t => t.id === activeModule) && (
                 <div className="segmented-tab-bar">
                   {CLEANUP_TABS.map(tab => {
@@ -1314,7 +1314,7 @@ export default function App() {
               ) : (
                 <div className="task-idle-dot" />
               )}
-              <span className="live-task-text" style={{ color: currentLiveTask.active ? '#fff' : 'rgba(255,255,255,0.85)' }}>
+              <span className="live-task-text" style={{ color: currentLiveTask.active ? (theme === 'crystal' ? '#fff' : '#0066cc') : 'var(--text-primary)' }}>
                 {currentLiveTask.text}
               </span>
               <span
@@ -1330,7 +1330,7 @@ export default function App() {
             </div>
 
             {/* Right: Network Speed Meter, Notification Panel & Theme */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto', flexShrink: 0 }}>
               <div
                 className="toolbar-net-meter"
                 onClick={() => setActiveModule('speed_test')}
@@ -1355,10 +1355,10 @@ export default function App() {
                 className="btn-secondary"
                 onClick={() => (window as any).electronAPI?.toggleTrayPanel && (window as any).electronAPI.toggleTrayPanel()}
                 title="Toggle PC Manager Notification Panel Popover"
-                style={{ padding: '5px 10px', fontSize: 11.5 }}
+                style={{ padding: '5px 8px', fontSize: 11, whiteSpace: 'nowrap' }}
               >
                 <Zap size={13} color="#00e5ff" />
-                <span>Notification Panel</span>
+                <span className="hide-on-compact">Notification Panel</span>
               </button>
 
               <button

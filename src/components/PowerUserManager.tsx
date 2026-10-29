@@ -48,14 +48,18 @@ export default function PowerUserManager({ setStatusBanner }: Props) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [resetting, setResetting] = useState(false);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (force = false) => {
     setLoading(true);
-    setStatusBanner('Querying all Windows user accounts and administrator groups via Get-LocalUser…');
+    if (force) {
+      setStatusBanner('Querying all Windows user accounts and administrator groups via Get-LocalUser…');
+    }
     try {
       if ((window as any).electronAPI?.getPowerUsers) {
-        const list = await (window as any).electronAPI.getPowerUsers();
+        const list = await (window as any).electronAPI.getPowerUsers({ force });
         setUsers(list || []);
-        setStatusBanner(`Loaded ${list.length} Windows user accounts with complete security profiles.`);
+        if (force) {
+          setStatusBanner(`Loaded ${list.length} Windows user accounts with complete security profiles.`);
+        }
       }
     } catch (err: any) {
       setStatusBanner(`User query notice: ${err.message}`);
@@ -65,7 +69,7 @@ export default function PowerUserManager({ setStatusBanner }: Props) {
   };
 
   useEffect(() => {
-    fetchUsers();
+    fetchUsers(false);
   }, []);
 
   const handleToggleUserState = async (user: LocalUser) => {
@@ -77,7 +81,7 @@ export default function PowerUserManager({ setStatusBanner }: Props) {
         const res = await (window as any).electronAPI.setUserState(user.name, targetState);
         setStatusBanner(res.message);
         await new Promise((r) => setTimeout(r, 1200));
-        await fetchUsers();
+        await fetchUsers(true);
       }
     } catch (err: any) {
       setStatusBanner(`Account state error: ${err.message}`);
@@ -101,7 +105,7 @@ export default function PowerUserManager({ setStatusBanner }: Props) {
         setNewPassword('');
         setConfirmPassword('');
         await new Promise((r) => setTimeout(r, 1200));
-        await fetchUsers();
+        await fetchUsers(true);
       }
     } catch (err: any) {
       setStatusBanner(`Password reset notice: ${err.message}`);
@@ -144,14 +148,14 @@ export default function PowerUserManager({ setStatusBanner }: Props) {
   return (
     <div className="workspace-container">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 600 }}>Power User &amp; Account Security Manager</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ minWidth: 260, flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <h1 style={{ fontSize: 22, fontWeight: 700 }}>Power User &amp; Account Security Manager</h1>
             <span
               style={{
-                fontSize: 11,
-                padding: '3px 8px',
+                fontSize: 10.5,
+                padding: '2px 8px',
                 borderRadius: 6,
                 background: 'rgba(139,61,255,0.2)',
                 color: '#a66bff',
@@ -163,8 +167,8 @@ export default function PowerUserManager({ setStatusBanner }: Props) {
             </span>
             <span
               style={{
-                fontSize: 11,
-                padding: '3px 8px',
+                fontSize: 10.5,
+                padding: '2px 8px',
                 borderRadius: 6,
                 background: 'rgba(24,226,153,0.18)',
                 color: '#18e299',
@@ -175,51 +179,51 @@ export default function PowerUserManager({ setStatusBanner }: Props) {
               Live SAM Database
             </span>
           </div>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
+          <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginTop: 4 }}>
             Inspect all local Windows accounts, administrator privileges, password policies, toggle enable/disable, and reset user passwords.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn-secondary" onClick={() => handleLaunchTool('netplwiz')} title="Open Advanced User Accounts (netplwiz)">
-            <Sliders size={14} /> Advanced Netplwiz
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <button className="btn-secondary" onClick={() => handleLaunchTool('netplwiz')} title="Open Advanced User Accounts (netplwiz)" style={{ padding: '6px 11px', fontSize: 11.5 }}>
+            <Sliders size={13} /> Advanced Netplwiz
           </button>
-          <button className="btn-secondary" onClick={() => handleLaunchTool('lusrmgr')} title="Open Local Users and Groups (lusrmgr.msc)">
-            <ExternalLink size={14} /> lusrmgr.msc
+          <button className="btn-secondary" onClick={() => handleLaunchTool('lusrmgr')} title="Open Local Users and Groups (lusrmgr.msc)" style={{ padding: '6px 11px', fontSize: 11.5 }}>
+            <ExternalLink size={13} /> lusrmgr.msc
           </button>
-          <button className="btn-primary" onClick={fetchUsers} disabled={loading}>
-            <RotateCcw size={14} className={loading ? 'animate-spin' : ''} />
-            {loading ? 'Querying Accounts…' : 'Refresh Users'}
+          <button className="btn-primary" onClick={() => fetchUsers(true)} disabled={loading} style={{ padding: '6px 13px', fontSize: 11.5 }}>
+            <RotateCcw size={13} className={loading ? 'animate-spin' : ''} />
+            {loading ? 'Querying…' : 'Refresh Users'}
           </button>
         </div>
       </div>
 
-      {/* Metrics Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-        <div className="glass-card" style={{ padding: '14px 18px' }}>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Total System Accounts</div>
-          <div style={{ fontSize: 24, fontWeight: 600, color: '#00e5ff', marginTop: 4 }}>
+      {/* Metrics Row (Responsive 4-Card Adaptive Layout) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+        <div className="glass-card" style={{ padding: '12px 16px' }}>
+          <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>Total System Accounts</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#00e5ff', marginTop: 2 }}>
             {totalUsers} Accounts
           </div>
         </div>
 
-        <div className="glass-card" style={{ padding: '14px 18px' }}>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Active / Enabled Users</div>
-          <div style={{ fontSize: 24, fontWeight: 600, color: '#18e299', marginTop: 4 }}>
+        <div className="glass-card" style={{ padding: '12px 16px' }}>
+          <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>Active / Enabled Users</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#18e299', marginTop: 2 }}>
             {enabledUsers} Active
           </div>
         </div>
 
-        <div className="glass-card" style={{ padding: '14px 18px' }}>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Administrator Accounts</div>
-          <div style={{ fontSize: 24, fontWeight: 600, color: '#ffbe0b', marginTop: 4 }}>
+        <div className="glass-card" style={{ padding: '12px 16px' }}>
+          <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>Administrator Accounts</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#ffbe0b', marginTop: 2 }}>
             {adminUsers} Admins
           </div>
         </div>
 
-        <div className="glass-card" style={{ padding: '14px 18px' }}>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Disabled / Locked Accounts</div>
-          <div style={{ fontSize: 24, fontWeight: 600, color: '#ff2a85', marginTop: 4 }}>
+        <div className="glass-card" style={{ padding: '12px 16px' }}>
+          <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>Disabled / Locked Accounts</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#ff2a85', marginTop: 2 }}>
             {disabledUsers} Disabled
           </div>
         </div>
@@ -302,11 +306,12 @@ export default function PowerUserManager({ setStatusBanner }: Props) {
                     ? '1px solid rgba(0,229,255,0.18)'
                     : '1px solid rgba(255,255,255,0.06)',
                   gap: 12,
-                  opacity: user.enabled ? 1 : 0.72
+                  opacity: user.enabled ? 1 : 0.72,
+                  flexWrap: 'wrap'
                 }}
               >
                 {/* User Info */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 260 }}>
                   <div
                     style={{
                       width: 40,
@@ -379,7 +384,7 @@ export default function PowerUserManager({ setStatusBanner }: Props) {
                 </div>
 
                 {/* Actions Stack */}
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, marginLeft: 'auto' }}>
                   {/* Reset Password Button */}
                   <button
                     className="btn-secondary"

@@ -2290,10 +2290,31 @@ async function getNetUserFallback() {
   }
 }
 
+// In-Memory Cache for Power Users (prevents repeated heavy PowerShell processes on tab switches)
+let cachedPowerUsers = null;
+let lastPowerUsersFetchTime = 0;
+let isPowerUsersQuerying = false;
+let powerUsersQueryPromise = null;
+
 // Power User & Security Manager: Query all Windows User Accounts
-ipcMain.handle('get-power-users', async () => {
+ipcMain.handle('get-power-users', async (_event, options = {}) => {
   if (process.platform !== 'win32') return [];
-  const scriptContent = `\$ProgressPreference = 'SilentlyContinue'
+  const forceRefresh = options && options.force === true;
+
+  // Return cached result if fresh (< 90 seconds) and not explicitly forced
+  if (!forceRefresh && cachedPowerUsers && cachedPowerUsers.length > 0 && (Date.now() - lastPowerUsersFetchTime < 90000)) {
+    return cachedPowerUsers;
+  }
+
+  // Mutex: If a query is already in flight, wait for it rather than spawning a second PowerShell process
+  if (isPowerUsersQuerying && powerUsersQueryPromise) {
+    return await powerUsersQueryPromise;
+  }
+
+  isPowerUsersQuerying = true;
+  powerUsersQueryPromise = (async () => {
+    try {
+      const scriptContent = `\$ProgressPreference = 'SilentlyContinue'
 \$adminNames = @((Get-LocalGroupMember -Group "Administrators" -ErrorAction SilentlyContinue).Name | ForEach-Object { \$_ -replace '^.*\\\\', '' })
 
 \$users = Get-LocalUser -ErrorAction SilentlyContinue | ForEach-Object {
@@ -2321,26 +2342,44 @@ ipcMain.handle('get-power-users', async () => {
 }
 \$users | ConvertTo-Json -Compress`;
 
-  const tmpFile = path.join(os.tmpdir(), `8002_users_${Date.now()}.ps1`);
-  try {
-    fs.writeFileSync(tmpFile, scriptContent, 'utf8');
-    const res = await execAsync(`powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${tmpFile}"`, 5000);
-    try { fs.unlinkSync(tmpFile); } catch (_) {}
-    if (res.stdout.trim()) {
-      const parsed = JSON.parse(res.stdout.trim());
-      const arr = Array.isArray(parsed) ? parsed : [parsed];
-      if (arr.length > 0) return arr;
-    }
-  } catch (_e) {
-    try { fs.unlinkSync(tmpFile); } catch (_) {}
-  }
+      const tmpFile = path.join(os.tmpdir(), `8002_users_${Date.now()}.ps1`);
+      try {
+        fs.writeFileSync(tmpFile, scriptContent, 'utf8');
+        const res = await execAsync(`powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "${tmpFile}"`, 7000);
+        try { fs.unlinkSync(tmpFile); } catch (_) {}
+        if (res.stdout.trim()) {
+          const parsed = JSON.parse(res.stdout.trim());
+          const arr = Array.isArray(parsed) ? parsed : [parsed];
+          if (arr.length > 0) {
+            cachedPowerUsers = arr;
+            lastPowerUsersFetchTime = Date.now();
+            return arr;
+          }
+        }
+      } catch (_e) {
+        try { fs.unlinkSync(tmpFile); } catch (_) {}
+      }
 
-  // Guaranteed fallback via net user (instant 20ms execution)
-  return await getNetUserFallback();
+      // Guaranteed fallback via net user (instant execution)
+      const fallback = await getNetUserFallback();
+      if (fallback && fallback.length > 0) {
+        cachedPowerUsers = fallback;
+        lastPowerUsersFetchTime = Date.now();
+      }
+      return fallback;
+    } finally {
+      isPowerUsersQuerying = false;
+      powerUsersQueryPromise = null;
+    }
+  })();
+
+  return await powerUsersQueryPromise;
 });
 
 // Power User: Toggle Account Enabled / Disabled
 ipcMain.handle('set-user-state', async (_event, { username, enable }) => {
+  cachedPowerUsers = null;
+  lastPowerUsersFetchTime = 0;
   if (!username) return { success: false, message: 'Username is required.' };
   if (process.platform === 'win32') {
     try {
@@ -2362,6 +2401,8 @@ ipcMain.handle('set-user-state', async (_event, { username, enable }) => {
 
 // Power User: Reset Account Password
 ipcMain.handle('reset-user-password', async (_event, { username, newPassword }) => {
+  cachedPowerUsers = null;
+  lastPowerUsersFetchTime = 0;
   if (!username || !newPassword) return { success: false, message: 'Username and new password are required.' };
   if (process.platform === 'win32') {
     try {

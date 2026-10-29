@@ -34,7 +34,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   runDeepScan: () => ipcRenderer.invoke('run-deep-scan'),
   getDeepHardwareInfo: () => ipcRenderer.invoke('get-deep-hardware-info'),
   openFirmwareManager: (action, payload) => ipcRenderer.invoke('open-firmware-manager', { action, payload }),
-  getPowerUsers: () => ipcRenderer.invoke('get-power-users'),
+  getPowerUsers: (options) => ipcRenderer.invoke('get-power-users', options),
   setUserState: (username, enable) => ipcRenderer.invoke('set-user-state', { username, enable }),
   resetUserPassword: (username, newPassword) => ipcRenderer.invoke('reset-user-password', { username, newPassword }),
   launchUserTool: (tool) => ipcRenderer.invoke('launch-user-tool', { tool }),
