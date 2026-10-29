@@ -62,11 +62,16 @@ import SpeedTest from './components/SpeedTest';
 import HardwareDeepStudio from './components/HardwareDeepStudio';
 import PowerUserManager from './components/PowerUserManager';
 import DataRecoveryStudio from './components/DataRecoveryStudio';
+import { BrowserCleaner } from './components/BrowserCleaner';
 import { NotificationPanelPopover } from './components/NotificationPanelPopover';
 
 declare global {
   interface Window {
     electronAPI?: {
+      scanBrowserData?: () => Promise<any[]>;
+      cleanBrowserData?: (payload: any) => Promise<any>;
+      closeBrowserProcess?: (processName: string) => Promise<any>;
+      onBrowserCleanProgress?: (callback: any) => () => void;
       getSystemTelemetry: (options?: any) => Promise<any>;
       quitProcess: (pid: number, name: string) => Promise<any>;
       scanJunk: () => Promise<any>;
@@ -1217,7 +1222,7 @@ export default function App() {
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 6 }}>
-            <span style={{ color: 'var(--text-secondary)' }}>v2.4.0 Pro</span>
+            <span style={{ color: 'var(--text-secondary)' }}>v2.4.1 Pro</span>
             <span style={{ color: '#18e299', fontWeight: 600 }}>● Live Engine</span>
           </div>
           <button
@@ -2065,19 +2070,15 @@ export default function App() {
         )}
 
         {/* ============================================================== */}
-        {/* 2. MODULE: SYSTEM JUNK & BROWSER CLEANUP */}
+        {/* 2. MODULE: SYSTEM JUNK CLEANER */}
         {/* ============================================================== */}
-        {(activeModule === 'system_junk' || activeModule === 'browser_cleanup') && (
+        {activeModule === 'system_junk' && (
           <div className="workspace-container">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h1 style={{ fontSize: 24, fontWeight: 600 }}>
-                  {activeModule === 'system_junk' ? 'Windows System Junk Cleaner' : 'Browser Privacy & Cache Cleaner'}
-                </h1>
+                <h1 style={{ fontSize: 24, fontWeight: 600 }}>Windows System Junk Cleaner</h1>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                  {activeModule === 'system_junk'
-                    ? 'Purge %TEMP%, Windows Temp, Prefetch, DirectX Shaders & Windows Update leftovers without freezing.'
-                    : 'Clear Chrome, Microsoft Edge, Brave, and Firefox caches, cookies & tracking logs.'}
+                  Purge %TEMP%, Windows Temp, Prefetch, DirectX Shaders &amp; Windows Update leftovers without freezing.
                 </p>
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
@@ -2121,9 +2122,7 @@ export default function App() {
               ) : (
                 <div className="scroll-table-container">
                   {scanResult.items
-                    .filter((item: any) =>
-                      activeModule === 'browser_cleanup' ? item.category === 'Browser Cleanup' : item.category !== 'Browser Cleanup'
-                    )
+                    .filter((item: any) => item.category !== 'Browser Cleanup')
                     .map((item: any) => (
                       <div
                         key={item.id}
@@ -2170,6 +2169,17 @@ export default function App() {
               )}
             </div>
           </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* 2B. MODULE: BROWSER PRIVACY & CACHE CLEANER */}
+        {/* ============================================================== */}
+        {activeModule === 'browser_cleanup' && (
+          <BrowserCleaner
+            setStatusBanner={setStatusBanner}
+            formatBytes={formatBytes}
+            onRefreshTelemetry={refreshTelemetry}
+          />
         )}
 
         {/* ============================================================== */}

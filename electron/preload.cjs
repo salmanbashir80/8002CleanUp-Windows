@@ -58,6 +58,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openMainModule: (module) => ipcRenderer.invoke('open-main-module', { module }),
   quitApp: () => ipcRenderer.invoke('quit-app'),
   emptyRecycleBin: () => ipcRenderer.invoke('empty-recycle-bin'),
+  scanBrowserData: () => ipcRenderer.invoke('scan-browser-data'),
+  cleanBrowserData: (payload) => ipcRenderer.invoke('clean-browser-data', payload),
+  closeBrowserProcess: (processName) => ipcRenderer.invoke('close-browser-process', { processName }),
+  onBrowserCleanProgress: (callback) => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on('browser-clean-progress', listener);
+    return () => ipcRenderer.removeListener('browser-clean-progress', listener);
+  },
   onNavigateModule: (callback) => {
     const listener = (_event, mod) => callback(mod);
     ipcRenderer.on('navigate-module', listener);

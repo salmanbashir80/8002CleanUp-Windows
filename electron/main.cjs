@@ -5,7 +5,7 @@ const os = require('os');
 const dns = require('dns');
 const https = require('https');
 const crypto = require('crypto');
-const { exec } = require('child_process');
+const { exec, execFile } = require('child_process');
 
 app.setAppUserModelId('com.salman.8002cleanup.windows');
 
@@ -640,12 +640,57 @@ ipcMain.handle('quit-process', async (_event, { pid, name }) => {
   }
 });
 
+function getChromiumProfileCacheTargets(browserName, userDataDir) {
+  const list = [];
+  if (!fs.existsSync(userDataDir)) return list;
+
+  for (const gcd of ['ShaderCache', 'GrShaderCache', 'GraphiteDawnCache', 'Crashpad']) {
+    const p = path.join(userDataDir, gcd);
+    if (fs.existsSync(p)) {
+      list.push({
+        id: `browser_${browserName.toLowerCase().replace(/\s+/g, '_')}_${gcd.toLowerCase()}`,
+        category: 'Browser Cleanup',
+        title: `${browserName} ${gcd}`,
+        path: p,
+        safety: 'Safe to Clean'
+      });
+    }
+  }
+
+  try {
+    const entries = fs.readdirSync(userDataDir, { withFileTypes: true });
+    for (const e of entries) {
+      if (e.isDirectory() && (/^Profile \d+$/i.test(e.name) || e.name === 'Default')) {
+        const profDir = path.join(userDataDir, e.name);
+        for (const sub of ['Cache', 'Code Cache', 'GPUCache', 'DawnGraphiteCache']) {
+          const cp = path.join(profDir, sub);
+          if (fs.existsSync(cp)) {
+            list.push({
+              id: `browser_${browserName.toLowerCase().replace(/\s+/g, '_')}_${e.name.toLowerCase().replace(/\s+/g, '_')}_${sub.toLowerCase().replace(/\s+/g, '_')}`,
+              category: 'Browser Cleanup',
+              title: `${browserName} (${e.name}) ${sub}`,
+              path: cp,
+              safety: 'Safe to Clean'
+            });
+          }
+        }
+      }
+    }
+  } catch (_) {}
+
+  return list;
+}
+
 // IPC 3: Real System Junk & Browser Cache Scanner (Windows 10/11 + macOS)
 ipcMain.handle('scan-junk', async () => {
   const home = os.homedir();
   const isWin = process.platform === 'win32';
   const localAppData = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
   const appData = process.env.APPDATA || path.join(home, 'AppData', 'Roaming');
+
+  const chromeTargets = isWin ? getChromiumProfileCacheTargets('Google Chrome', path.join(localAppData, 'Google', 'Chrome', 'User Data')) : [];
+  const edgeTargets = isWin ? getChromiumProfileCacheTargets('Microsoft Edge', path.join(localAppData, 'Microsoft', 'Edge', 'User Data')) : [];
+  const braveTargets = isWin ? getChromiumProfileCacheTargets('Brave Browser', path.join(localAppData, 'BraveSoftware', 'Brave-Browser', 'User Data')) : [];
 
   const targets = isWin
     ? [
@@ -656,9 +701,9 @@ ipcMain.handle('scan-junk', async () => {
         { id: 'win_update_cache', category: 'System Junk', title: 'Windows Update Download Cache', path: 'C:\\Windows\\SoftwareDistribution\\Download', safety: 'Safe to Clean' },
         { id: 'win_directx', category: 'Developer & GPU Caches', title: 'DirectX Shader Cache (D3DSCache)', path: path.join(localAppData, 'D3DSCache'), safety: 'Safe to Clean' },
         { id: 'win_crash_dumps', category: 'System Junk', title: 'Windows Application Crash Dumps', path: path.join(localAppData, 'CrashDumps'), safety: 'Safe to Clean' },
-        { id: 'win_chrome_cache', category: 'Browser Cleanup', title: 'Google Chrome Cache', path: path.join(localAppData, 'Google', 'Chrome', 'User Data', 'Default', 'Cache'), safety: 'Safe to Clean' },
-        { id: 'win_edge_cache', category: 'Browser Cleanup', title: 'Microsoft Edge Cache', path: path.join(localAppData, 'Microsoft', 'Edge', 'User Data', 'Default', 'Cache'), safety: 'Safe to Clean' },
-        { id: 'win_brave_cache', category: 'Browser Cleanup', title: 'Brave Browser Cache', path: path.join(localAppData, 'BraveSoftware', 'Brave-Browser', 'User Data', 'Default', 'Cache'), safety: 'Safe to Clean' },
+        ...chromeTargets,
+        ...edgeTargets,
+        ...braveTargets,
         { id: 'dev_npm_cache', category: 'Developer Caches', title: 'npm Global Cache', path: path.join(appData, 'npm-cache'), safety: 'Safe to Clean' },
         { id: 'dev_pip_cache', category: 'Developer Caches', title: 'Python pip Cache', path: path.join(localAppData, 'pip', 'cache'), safety: 'Safe to Clean' },
         { id: 'dev_gradle_cache', category: 'Developer Caches', title: 'Gradle Build Cache', path: path.join(home, '.gradle', 'caches'), safety: 'Safe to Clean' },
@@ -2911,4 +2956,551 @@ ipcMain.handle('empty-recycle-bin', async () => {
     await execAsync('powershell -NoProfile -Command "Clear-RecycleBin -Force -ErrorAction SilentlyContinue"', 8000);
   }
   return { success: true, message: 'Windows Recycle Bin emptied.' };
+});
+
+// ==============================================================
+// ADVANCED BROWSER PRIVACY & MULTI-PROFILE CACHE COMMAND CENTER
+// ==============================================================
+
+function isProcessRunningSync(procName) {
+  if (process.platform !== 'win32') return false;
+  try {
+    const stdout = require('child_process').execFileSync('tasklist', ['/fo', 'csv', '/nh'], { timeout: 3000, encoding: 'utf8' });
+    return stdout.toLowerCase().includes(`${procName.toLowerCase()}.exe`);
+  } catch (_) {
+    return false;
+  }
+}
+
+function getFolderRecursiveStats(dirPath, maxDepth = 4) {
+  let size = 0;
+  let count = 0;
+  if (!fs.existsSync(dirPath)) return { size, count };
+
+  try {
+    const queue = [{ p: dirPath, d: 0 }];
+    while (queue.length > 0) {
+      const { p, d } = queue.shift();
+      let entries = [];
+      try {
+        entries = fs.readdirSync(p, { withFileTypes: true });
+      } catch (_) {
+        continue;
+      }
+      for (const e of entries) {
+        const full = path.join(p, e.name);
+        try {
+          if (e.isDirectory()) {
+            if (d < maxDepth) {
+              queue.push({ p: full, d: d + 1 });
+            }
+          } else if (e.isFile()) {
+            const st = fs.statSync(full);
+            size += st.size;
+            count++;
+          }
+        } catch (_) {}
+      }
+    }
+  } catch (_) {}
+  return { size, count };
+}
+
+ipcMain.handle('scan-browser-data', async () => {
+  const home = os.homedir();
+  const localAppData = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
+  const appData = process.env.APPDATA || path.join(home, 'AppData', 'Roaming');
+
+  const browsersDef = [
+    {
+      id: 'chrome',
+      name: 'Google Chrome',
+      processName: 'chrome',
+      type: 'chromium',
+      userDataDir: path.join(localAppData, 'Google', 'Chrome', 'User Data')
+    },
+    {
+      id: 'edge',
+      name: 'Microsoft Edge',
+      processName: 'msedge',
+      type: 'chromium',
+      userDataDir: path.join(localAppData, 'Microsoft', 'Edge', 'User Data')
+    },
+    {
+      id: 'brave',
+      name: 'Brave Browser',
+      processName: 'brave',
+      type: 'chromium',
+      userDataDir: path.join(localAppData, 'BraveSoftware', 'Brave-Browser', 'User Data')
+    },
+    {
+      id: 'opera',
+      name: 'Opera Stable',
+      processName: 'opera',
+      type: 'chromium',
+      userDataDir: path.join(appData, 'Opera Software', 'Opera Stable'),
+      localCacheDir: path.join(localAppData, 'Opera Software', 'Opera Stable')
+    },
+    {
+      id: 'opera_gx',
+      name: 'Opera GX Gaming',
+      processName: 'opera',
+      type: 'chromium',
+      userDataDir: path.join(appData, 'Opera Software', 'Opera GX Stable'),
+      localCacheDir: path.join(localAppData, 'Opera Software', 'Opera GX Stable')
+    },
+    {
+      id: 'vivaldi',
+      name: 'Vivaldi Browser',
+      processName: 'vivaldi',
+      type: 'chromium',
+      userDataDir: path.join(localAppData, 'Vivaldi', 'User Data')
+    },
+    {
+      id: 'firefox',
+      name: 'Mozilla Firefox',
+      processName: 'firefox',
+      type: 'firefox',
+      roamingDir: path.join(appData, 'Mozilla', 'Firefox', 'Profiles'),
+      localDir: path.join(localAppData, 'Mozilla', 'Firefox', 'Profiles')
+    }
+  ];
+
+  const results = [];
+
+  for (const b of browsersDef) {
+    if (!fs.existsSync(b.userDataDir || '') && !fs.existsSync(b.roamingDir || '')) {
+      continue;
+    }
+
+    const isRunning = isProcessRunningSync(b.processName);
+
+    if (b.type === 'chromium') {
+      const userData = b.userDataDir;
+      let profiles = [];
+      try {
+        const entries = fs.readdirSync(userData, { withFileTypes: true });
+        for (const e of entries) {
+          if (e.isDirectory() && (/^Profile \d+$/i.test(e.name) || e.name === 'Default')) {
+            profiles.push(path.join(userData, e.name));
+          }
+        }
+      } catch (_) {}
+
+      if (profiles.length === 0 && fs.existsSync(userData)) {
+        profiles.push(userData);
+      }
+
+      // 1. Caches
+      let cacheBytes = 0;
+      let cacheCount = 0;
+      const cachePaths = [];
+
+      for (const gcd of ['ShaderCache', 'GrShaderCache', 'GraphiteDawnCache', 'GPUPersistentCache']) {
+        const p = path.join(userData, gcd);
+        if (fs.existsSync(p)) {
+          const st = getFolderRecursiveStats(p, 3);
+          cacheBytes += st.size;
+          cacheCount += st.count;
+          cachePaths.push(p);
+        }
+      }
+      if (b.localCacheDir && fs.existsSync(b.localCacheDir)) {
+        for (const lcd of ['Cache', 'Code Cache', 'GPUCache']) {
+          const p = path.join(b.localCacheDir, lcd);
+          if (fs.existsSync(p)) {
+            const st = getFolderRecursiveStats(p, 3);
+            cacheBytes += st.size;
+            cacheCount += st.count;
+            cachePaths.push(p);
+          }
+        }
+      }
+
+      // 2. Crashpad & Logs
+      let crashBytes = 0;
+      let crashCount = 0;
+      const crashPaths = [];
+      for (const cDir of ['Crashpad', 'BrowserMetrics', 'DeferredBrowserMetrics', 'Local Traces']) {
+        const p = path.join(userData, cDir);
+        if (fs.existsSync(p)) {
+          const st = getFolderRecursiveStats(p, 3);
+          crashBytes += st.size;
+          crashCount += st.count;
+          crashPaths.push(p);
+        }
+      }
+
+      // Profile specifics
+      let historyBytes = 0;
+      let historyCount = 0;
+      const historyPaths = [];
+
+      let cookiesBytes = 0;
+      let cookiesCount = 0;
+      const cookiesPaths = [];
+
+      let sessionsBytes = 0;
+      let sessionsCount = 0;
+      const sessionsPaths = [];
+
+      let downloadsBytes = 0;
+      let downloadsCount = 0;
+      const downloadsPaths = [];
+
+      for (const prof of profiles) {
+        // Caches
+        for (const cName of ['Cache', 'Code Cache', 'GPUCache', 'DawnGraphiteCache', 'DawnWebGPUCache', 'image_cache']) {
+          const cp = path.join(prof, cName);
+          if (fs.existsSync(cp)) {
+            const st = getFolderRecursiveStats(cp, 3);
+            cacheBytes += st.size;
+            cacheCount += st.count;
+            cachePaths.push(cp);
+          }
+        }
+        const sw = path.join(prof, 'Service Worker', 'CacheStorage');
+        if (fs.existsSync(sw)) {
+          const st = getFolderRecursiveStats(sw, 3);
+          cacheBytes += st.size;
+          cacheCount += st.count;
+          cachePaths.push(sw);
+        }
+
+        // History
+        for (const hf of ['History', 'History-journal', 'Visited Links', 'Top Sites', 'Shortcuts', 'History Provider Cache']) {
+          const hp = path.join(prof, hf);
+          if (fs.existsSync(hp)) {
+            try {
+              const st = fs.statSync(hp);
+              historyBytes += st.size;
+              historyCount++;
+              historyPaths.push(hp);
+            } catch (_) {}
+          }
+        }
+
+        // Cookies & Storage
+        for (const cf of ['Cookies', 'Cookies-journal', path.join('Network', 'Cookies'), path.join('Network', 'Cookies-journal')]) {
+          const cp = path.join(prof, cf);
+          if (fs.existsSync(cp)) {
+            try {
+              const st = fs.statSync(cp);
+              cookiesBytes += st.size;
+              cookiesCount++;
+              cookiesPaths.push(cp);
+            } catch (_) {}
+          }
+        }
+        for (const cd of ['IndexedDB', 'Local Storage', 'Session Storage']) {
+          const cdp = path.join(prof, cd);
+          if (fs.existsSync(cdp)) {
+            const st = getFolderRecursiveStats(cdp, 2);
+            cookiesBytes += st.size;
+            cookiesCount += st.count;
+            cookiesPaths.push(cdp);
+          }
+        }
+
+        // Sessions
+        for (const sf of ['Sessions', 'Current Session', 'Current Tabs', 'Last Session', 'Last Tabs']) {
+          const sp = path.join(prof, sf);
+          if (fs.existsSync(sp)) {
+            try {
+              const st = fs.statSync(sp);
+              if (st.isDirectory()) {
+                const fst = getFolderRecursiveStats(sp, 2);
+                sessionsBytes += fst.size;
+                sessionsCount += fst.count;
+              } else {
+                sessionsBytes += st.size;
+                sessionsCount++;
+              }
+              sessionsPaths.push(sp);
+            } catch (_) {}
+          }
+        }
+
+        // Downloads
+        const dl = path.join(prof, 'Download Service');
+        if (fs.existsSync(dl)) {
+          const st = getFolderRecursiveStats(dl, 2);
+          downloadsBytes += st.size;
+          downloadsCount += st.count;
+          downloadsPaths.push(dl);
+        }
+      }
+
+      const totalSize = cacheBytes + historyBytes + cookiesBytes + sessionsBytes + crashBytes + downloadsBytes;
+
+      results.push({
+        id: b.id,
+        name: b.name,
+        processName: b.processName,
+        profileCount: profiles.length,
+        isRunning,
+        totalSizeBytes: totalSize,
+        categories: [
+          {
+            id: 'cache',
+            name: 'Internet & Web Cache',
+            description: `HTTP disk cache, compiled V8 bytecode & GPU shaders across ${profiles.length} profiles`,
+            sizeBytes: cacheBytes,
+            itemCount: cacheCount,
+            paths: cachePaths,
+            selected: true
+          },
+          {
+            id: 'history',
+            name: 'Browsing & Search History',
+            description: 'Visited websites, typed URLs, search autocomplete & top sites',
+            sizeBytes: historyBytes,
+            itemCount: historyCount,
+            paths: historyPaths,
+            selected: true
+          },
+          {
+            id: 'cookies',
+            name: 'Cookies & Web Storage',
+            description: 'Active website login tokens, IndexedDB stores & LocalStorage',
+            sizeBytes: cookiesBytes,
+            itemCount: cookiesCount,
+            paths: cookiesPaths,
+            selected: false
+          },
+          {
+            id: 'sessions',
+            name: 'Saved Tabs & Sessions',
+            description: 'Previous window tab states, reopenable session snapshots',
+            sizeBytes: sessionsBytes,
+            itemCount: sessionsCount,
+            paths: sessionsPaths,
+            selected: false
+          },
+          {
+            id: 'crashes',
+            name: 'Crashpad & Telemetry Dumps',
+            description: 'Browser crash minidumps, telemetry traces & diagnostic reports',
+            sizeBytes: crashBytes,
+            itemCount: crashCount,
+            paths: crashPaths,
+            selected: true
+          },
+          {
+            id: 'downloads',
+            name: 'Download History Records',
+            description: 'Browser download list records (downloaded files on disk remain safe)',
+            sizeBytes: downloadsBytes,
+            itemCount: downloadsCount,
+            paths: downloadsPaths,
+            selected: false
+          }
+        ]
+      });
+    } else if (b.type === 'firefox') {
+      const roaming = b.roamingDir;
+      const local = b.localDir;
+      let profiles = [];
+      if (fs.existsSync(roaming)) {
+        try {
+          const entries = fs.readdirSync(roaming, { withFileTypes: true });
+          for (const e of entries) {
+            if (e.isDirectory()) profiles.push(e.name);
+          }
+        } catch (_) {}
+      }
+
+      let cacheBytes = 0;
+      let cacheCount = 0;
+      const cachePaths = [];
+
+      let historyBytes = 0;
+      let historyCount = 0;
+      const historyPaths = [];
+
+      let cookiesBytes = 0;
+      let cookiesCount = 0;
+      const cookiesPaths = [];
+
+      let crashBytes = 0;
+      let crashCount = 0;
+      const crashPaths = [];
+
+      for (const pName of profiles) {
+        if (local && fs.existsSync(local)) {
+          const c2 = path.join(local, pName, 'cache2');
+          if (fs.existsSync(c2)) {
+            const st = getFolderRecursiveStats(c2, 3);
+            cacheBytes += st.size;
+            cacheCount += st.count;
+            cachePaths.push(c2);
+          }
+          const sc = path.join(local, pName, 'startupCache');
+          if (fs.existsSync(sc)) {
+            const st = getFolderRecursiveStats(sc, 3);
+            cacheBytes += st.size;
+            cacheCount += st.count;
+            cachePaths.push(sc);
+          }
+        }
+        if (roaming && fs.existsSync(roaming)) {
+          for (const h of ['places.sqlite-wal', 'places.sqlite-shm', 'formhistory.sqlite']) {
+            const hp = path.join(roaming, pName, h);
+            if (fs.existsSync(hp)) {
+              try {
+                const st = fs.statSync(hp);
+                historyBytes += st.size;
+                historyCount++;
+                historyPaths.push(hp);
+              } catch (_) {}
+            }
+          }
+          for (const c of ['cookies.sqlite', 'webappsstore.sqlite']) {
+            const cp = path.join(roaming, pName, c);
+            if (fs.existsSync(cp)) {
+              try {
+                const st = fs.statSync(cp);
+                cookiesBytes += st.size;
+                cookiesCount++;
+                cookiesPaths.push(cp);
+              } catch (_) {}
+            }
+          }
+          const md = path.join(roaming, pName, 'minidumps');
+          if (fs.existsSync(md)) {
+            const st = getFolderRecursiveStats(md, 2);
+            crashBytes += st.size;
+            crashCount += st.count;
+            crashPaths.push(md);
+          }
+        }
+      }
+
+      const totalSize = cacheBytes + historyBytes + cookiesBytes + crashBytes;
+      if (profiles.length > 0) {
+        results.push({
+          id: b.id,
+          name: b.name,
+          processName: b.processName,
+          profileCount: profiles.length,
+          isRunning,
+          totalSizeBytes: totalSize,
+          categories: [
+            {
+              id: 'cache',
+              name: 'Internet & Web Cache',
+              description: `Firefox cache2 & startupCache across ${profiles.length} profiles`,
+              sizeBytes: cacheBytes,
+              itemCount: cacheCount,
+              paths: cachePaths,
+              selected: true
+            },
+            {
+              id: 'history',
+              name: 'Browsing & Search History',
+              description: 'Form history, navigation logs & autocomplete caches',
+              sizeBytes: historyBytes,
+              itemCount: historyCount,
+              paths: historyPaths,
+              selected: true
+            },
+            {
+              id: 'cookies',
+              name: 'Cookies & Web Storage',
+              description: 'Website cookies & webappsstore database',
+              sizeBytes: cookiesBytes,
+              itemCount: cookiesCount,
+              paths: cookiesPaths,
+              selected: false
+            },
+            {
+              id: 'crashes',
+              name: 'Crashpad & Minidumps',
+              description: 'Firefox crash minidumps & error reports',
+              sizeBytes: crashBytes,
+              itemCount: crashCount,
+              paths: crashPaths,
+              selected: true
+            }
+          ]
+        });
+      }
+    }
+  }
+
+  return results;
+});
+
+ipcMain.handle('close-browser-process', async (_event, { processName }) => {
+  if (process.platform === 'win32' && processName) {
+    try {
+      await execAsync(`taskkill /F /IM ${processName}.exe /T`, 5000);
+    } catch (_) {}
+  }
+  return { success: true };
+});
+
+ipcMain.handle('clean-browser-data', async (event, { items, closeBrowsers }) => {
+  const itemList = Array.isArray(items) ? items : [];
+
+  if (closeBrowsers) {
+    const processNames = new Set();
+    for (const item of itemList) {
+      if (item.processName) processNames.add(item.processName);
+    }
+    for (const proc of processNames) {
+      try {
+        await execAsync(`taskkill /F /IM ${proc}.exe /T`, 4000);
+      } catch (_) {}
+    }
+    await new Promise((r) => setTimeout(r, 600));
+  }
+
+  let totalCleanedFiles = 0;
+  let totalFreedBytes = 0;
+
+  for (const item of itemList) {
+    const paths = Array.isArray(item.paths) ? item.paths : [];
+    for (const p of paths) {
+      try {
+        if (!fs.existsSync(p)) continue;
+        const st = await fs.promises.lstat(p).catch(() => null);
+        if (!st) continue;
+
+        if (st.isDirectory()) {
+          const res = await purgeDirectoryContentsAsync(p, (prog) => {
+            try {
+              event.sender.send('browser-clean-progress', {
+                browserId: item.browserId,
+                categoryId: item.categoryId,
+                target: path.basename(p),
+                count: totalCleanedFiles + prog.count,
+                freedBytes: totalFreedBytes + prog.freed
+              });
+            } catch (_) {}
+          });
+          totalCleanedFiles += res.count;
+          totalFreedBytes += res.freed;
+        } else {
+          const sz = st.size || 0;
+          try {
+            await fs.promises.chmod(p, 0o666).catch(() => {});
+            await fs.promises.unlink(p);
+            totalCleanedFiles += 1;
+            totalFreedBytes += sz;
+          } catch (_) {}
+        }
+      } catch (_) {}
+      await new Promise((r) => setImmediate(r));
+    }
+  }
+
+  const freedMB = (totalFreedBytes / (1024 * 1024)).toFixed(1);
+  return {
+    ok: true,
+    cleanedCount: totalCleanedFiles,
+    freedBytes: totalFreedBytes,
+    freedMB,
+    message: `Successfully cleaned ${totalCleanedFiles} browser files (${freedMB} MB reclaimed)!`
+  };
 });
