@@ -66,7 +66,7 @@ import { NotificationPanelPopover } from './components/NotificationPanelPopover'
 declare global {
   interface Window {
     electronAPI?: {
-      getSystemTelemetry: () => Promise<any>;
+      getSystemTelemetry: (options?: any) => Promise<any>;
       quitProcess: (pid: number, name: string) => Promise<any>;
       scanJunk: () => Promise<any>;
       cleanItems: (paths: string[], dryRun: boolean) => Promise<any>;
@@ -368,18 +368,24 @@ export default function App() {
   const [procSearch, setProcSearch] = useState('');
 
   // Refresh real telemetry
-  const refreshTelemetry = async () => {
+  const refreshTelemetry = async (includeProcs = false) => {
     if (window.electronAPI?.getSystemTelemetry) {
-      const data = await window.electronAPI.getSystemTelemetry();
+      const data = await window.electronAPI.getSystemTelemetry({
+        includeProcesses: includeProcs || activeModule === 'task_list'
+      });
       if (data) setTelemetry(data);
     }
   };
 
   useEffect(() => {
-    refreshTelemetry();
-    const timer = setInterval(refreshTelemetry, 4000);
+    refreshTelemetry(activeModule === 'task_list');
+    const timer = setInterval(() => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        refreshTelemetry(activeModule === 'task_list');
+      }
+    }, 4500);
     return () => clearInterval(timer);
-  }, []);
+  }, [activeModule]);
 
   // Live AdGuard Filter Monitor
   useEffect(() => {
@@ -1081,7 +1087,7 @@ export default function App() {
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 6 }}>
-            <span style={{ color: 'var(--text-secondary)' }}>v2.3.3 Pro</span>
+            <span style={{ color: 'var(--text-secondary)' }}>v2.3.4 Pro</span>
             <span style={{ color: '#18e299', fontWeight: 600 }}>● Live Engine</span>
           </div>
           <button

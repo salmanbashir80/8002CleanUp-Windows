@@ -102,8 +102,6 @@ export default function RegistryCleaner({ setStatusBanner }: Props) {
 
   useEffect(() => {
     refreshBackupsList();
-    // Auto scan on load
-    handleScanRegistry();
   }, []);
 
   // Category toggle
@@ -655,6 +653,21 @@ export default function RegistryCleaner({ setStatusBanner }: Props) {
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
                   Auditing orphaned MuiCache, App Paths, Run keys, and missing extensions.
                 </div>
+              </div>
+            ) : !hasScanned ? (
+              <div style={{ padding: 60, textAlign: 'center' }}>
+                <Database size={42} color="#00e5ff" style={{ margin: '0 auto 12px', opacity: 0.85 }} />
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>Windows Registry Cleaner Ready</div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginTop: 6, maxWidth: 440, margin: '6px auto 16px' }}>
+                  Select the categories you want to inspect on the left and click "Scan for Issues" to start an in-depth audit.
+                </div>
+                <button
+                  className="btn-primary"
+                  onClick={handleScanRegistry}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 24px', fontSize: 13 }}
+                >
+                  <Search size={15} /> Scan for Issues
+                </button>
               </div>
             ) : filteredIssues.length === 0 ? (
               <div style={{ padding: 60, textAlign: 'center' }}>

@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  getSystemTelemetry: () => ipcRenderer.invoke('get-system-telemetry'),
+  getSystemTelemetry: (options) => ipcRenderer.invoke('get-system-telemetry', options),
   quitProcess: (pid, name) => ipcRenderer.invoke('quit-process', { pid, name }),
   scanJunk: () => ipcRenderer.invoke('scan-junk'),
   cleanItems: (paths, dryRun) => ipcRenderer.invoke('clean-items', { paths, dryRun }),

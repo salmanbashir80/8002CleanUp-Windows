@@ -46,7 +46,11 @@ export const NotificationPanelPopover: React.FC<NotificationPanelPopoverProps> =
 
   useEffect(() => {
     refreshTelemetry();
-    const interval = setInterval(refreshTelemetry, 2500);
+    const interval = setInterval(() => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        refreshTelemetry();
+      }
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
