@@ -267,19 +267,104 @@ export default function App() {
   });
 
   // AdGuard Protection Master & Sub-Modules State (Matching User Phone Screenshots)
-  const [isProtectionEnabled, setIsProtectionEnabled] = useState(true);
-  const [adguardModuleAdBlock, setAdguardModuleAdBlock] = useState(true);
-  const [adguardModuleTracking, setAdguardModuleTracking] = useState(true);
-  const [adguardModuleAnnoyance, setAdguardModuleAnnoyance] = useState(true);
-  const [adguardModuleDns, setAdguardModuleDns] = useState(true);
-  const [adguardModuleFirewall, setAdguardModuleFirewall] = useState(true);
-  const [adguardModuleBrowsingSecurity, setAdguardModuleBrowsingSecurity] = useState(true);
+  const [isProtectionEnabled, setIsProtectionEnabled] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('adguard_protection_enabled');
+      return saved !== null ? saved === 'true' : true;
+    } catch (_) {
+      return true;
+    }
+  });
+  const [adguardModuleAdBlock, setAdguardModuleAdBlock] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('adguard_mod_adblock');
+      return saved !== null ? saved === 'true' : true;
+    } catch (_) {
+      return true;
+    }
+  });
+  const [adguardModuleTracking, setAdguardModuleTracking] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('adguard_mod_tracking');
+      return saved !== null ? saved === 'true' : true;
+    } catch (_) {
+      return true;
+    }
+  });
+  const [adguardModuleAnnoyance, setAdguardModuleAnnoyance] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('adguard_mod_annoyance');
+      return saved !== null ? saved === 'true' : true;
+    } catch (_) {
+      return true;
+    }
+  });
+  const [adguardModuleDns, setAdguardModuleDns] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('adguard_mod_dns');
+      return saved !== null ? saved === 'true' : true;
+    } catch (_) {
+      return true;
+    }
+  });
+  const [adguardModuleFirewall, setAdguardModuleFirewall] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('adguard_mod_firewall');
+      return saved !== null ? saved === 'true' : true;
+    } catch (_) {
+      return true;
+    }
+  });
+  const [adguardModuleBrowsingSecurity, setAdguardModuleBrowsingSecurity] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('adguard_mod_security');
+      return saved !== null ? saved === 'true' : true;
+    } catch (_) {
+      return true;
+    }
+  });
   const [adguardActiveTab, setAdguardActiveTab] = useState<'protection' | 'ai_pet' | 'dns_stealth'>('protection');
-  const [adsBlocked, setAdsBlocked] = useState(1280);
-  const [trackersBlocked, setTrackersBlocked] = useState(482);
-  const [threatsBlocked, setThreatsBlocked] = useState(14);
-  const [dataSavedBytes, setDataSavedBytes] = useState(48500000);
-  const [lastBlockedDomain, setLastBlockedDomain] = useState('Blocked doubleclick.net (AdGuard Base Filter)');
+
+  // AdGuard Live Stats: Strictly 0 on fresh install / new system
+  const [adsBlocked, setAdsBlocked] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('adguard_ads_blocked');
+      return saved !== null ? Math.max(0, parseInt(saved, 10) || 0) : 0;
+    } catch (_) {
+      return 0;
+    }
+  });
+  const [trackersBlocked, setTrackersBlocked] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('adguard_trackers_blocked');
+      return saved !== null ? Math.max(0, parseInt(saved, 10) || 0) : 0;
+    } catch (_) {
+      return 0;
+    }
+  });
+  const [threatsBlocked, setThreatsBlocked] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('adguard_threats_blocked');
+      return saved !== null ? Math.max(0, parseInt(saved, 10) || 0) : 0;
+    } catch (_) {
+      return 0;
+    }
+  });
+  const [dataSavedBytes, setDataSavedBytes] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('adguard_data_saved_bytes');
+      return saved !== null ? Math.max(0, parseInt(saved, 10) || 0) : 0;
+    } catch (_) {
+      return 0;
+    }
+  });
+  const [lastBlockedDomain, setLastBlockedDomain] = useState<string>(() => {
+    try {
+      return localStorage.getItem('adguard_last_blocked') || 'AdGuard Shield Active — Ready to block ads & trackers';
+    } catch (_) {
+      return 'AdGuard Shield Active — Ready to block ads & trackers';
+    }
+  });
 
   const [adguardTab, setAdguardTab] = useState<
     'General' | 'Filters' | 'DNS' | 'Stealth Mode' | 'Security' | 'Assistant' | 'Extensions' | 'Network'
@@ -393,27 +478,36 @@ export default function App() {
     return () => clearInterval(timer);
   }, [activeModule]);
 
-  // Live AdGuard Filter Monitor
+  // Persist AdGuard Protection Settings & Real Blocked Stats to localStorage
   useEffect(() => {
-    if (!isProtectionEnabled) return;
-    const rules = [
-      { domain: 'googleads.g.doubleclick.net', cat: 'ad', bytes: 38400 },
-      { domain: 'pixel.facebook.com', cat: 'tracker', bytes: 16200 },
-      { domain: 'pagead2.googlesyndication.com', cat: 'ad', bytes: 42100 },
-      { domain: 'google-analytics.com', cat: 'tracker', bytes: 19400 },
-      { domain: 'adnxs.com', cat: 'ad', bytes: 31000 }
-    ];
-    let idx = 0;
-    const interval = setInterval(() => {
-      const r = rules[idx % rules.length];
-      idx += 1;
-      if (r.cat === 'ad') setAdsBlocked((n) => n + 1);
-      else setTrackersBlocked((n) => n + 1);
-      setDataSavedBytes((b) => b + r.bytes);
-      setLastBlockedDomain(`Blocked ${r.domain} (AdGuard Real-Time Filter)`);
-    }, 3200);
-    return () => clearInterval(interval);
-  }, [isProtectionEnabled]);
+    try {
+      localStorage.setItem('adguard_protection_enabled', String(isProtectionEnabled));
+      localStorage.setItem('adguard_mod_adblock', String(adguardModuleAdBlock));
+      localStorage.setItem('adguard_mod_tracking', String(adguardModuleTracking));
+      localStorage.setItem('adguard_mod_annoyance', String(adguardModuleAnnoyance));
+      localStorage.setItem('adguard_mod_dns', String(adguardModuleDns));
+      localStorage.setItem('adguard_mod_firewall', String(adguardModuleFirewall));
+      localStorage.setItem('adguard_mod_security', String(adguardModuleBrowsingSecurity));
+      localStorage.setItem('adguard_ads_blocked', String(adsBlocked));
+      localStorage.setItem('adguard_trackers_blocked', String(trackersBlocked));
+      localStorage.setItem('adguard_threats_blocked', String(threatsBlocked));
+      localStorage.setItem('adguard_data_saved_bytes', String(dataSavedBytes));
+      localStorage.setItem('adguard_last_blocked', lastBlockedDomain);
+    } catch (_) {}
+  }, [
+    isProtectionEnabled,
+    adguardModuleAdBlock,
+    adguardModuleTracking,
+    adguardModuleAnnoyance,
+    adguardModuleDns,
+    adguardModuleFirewall,
+    adguardModuleBrowsingSecurity,
+    adsBlocked,
+    trackersBlocked,
+    threatsBlocked,
+    dataSavedBytes,
+    lastBlockedDomain
+  ]);
 
   // Listen for non-blocking clean progress
   useEffect(() => {
@@ -771,6 +865,22 @@ export default function App() {
     setIsApplyingDns(false);
   };
 
+  const handleResetAdguardStats = () => {
+    setAdsBlocked(0);
+    setTrackersBlocked(0);
+    setThreatsBlocked(0);
+    setDataSavedBytes(0);
+    setLastBlockedDomain('AdGuard Shield Reset — 0 Ads & Trackers Blocked');
+    try {
+      localStorage.removeItem('adguard_ads_blocked');
+      localStorage.removeItem('adguard_trackers_blocked');
+      localStorage.removeItem('adguard_threats_blocked');
+      localStorage.removeItem('adguard_data_saved_bytes');
+      localStorage.removeItem('adguard_last_blocked');
+    } catch (_) {}
+    setStatusBanner('✨ AdGuard protection statistics successfully reset to 0.');
+  };
+
   const handleRunSinkholeTest = async () => {
     setIsTestingSinkhole(true);
     setStatusBanner('Testing live DNS sinkhole resolution against ad tracking domain doubleclick.net...');
@@ -783,6 +893,11 @@ export default function App() {
         adguardServerResult: res.adguardServerResult,
         statusText: res.statusText
       });
+      if (res.systemBlocked || res.adguardBlocked) {
+        setAdsBlocked((n) => n + 1);
+        setDataSavedBytes((b) => b + 38400);
+        setLastBlockedDomain('Blocked doubleclick.net (AdGuard DNS Sinkhole Test)');
+      }
       setStatusBanner(res.statusText);
     }
     setIsTestingSinkhole(false);
@@ -1222,7 +1337,7 @@ export default function App() {
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 6 }}>
-            <span style={{ color: 'var(--text-secondary)' }}>v2.4.1 Pro</span>
+            <span style={{ color: 'var(--text-secondary)' }}>v2.4.2 Pro</span>
             <span style={{ color: '#18e299', fontWeight: 600 }}>● Live Engine</span>
           </div>
           <button
@@ -1581,10 +1696,10 @@ export default function App() {
                         <span className="metric-pill" style={{ color: '#00f2fe', borderColor: 'rgba(0,242,254,0.3)', padding: '2px 6px', fontSize: 10 }}>Active</span>
                       </div>
                       <div className="pillar-metric" style={{ color: '#00f2fe' }}>
-                        100% Guard
+                        {adsBlocked + trackersBlocked > 0 ? `${(adsBlocked + trackersBlocked).toLocaleString()} Blocked` : '100% Guard'}
                       </div>
                       <div className="pillar-sub">
-                        AdGuard Online • 14 Accounts Verified
+                        {adsBlocked + trackersBlocked > 0 ? `${formatBytes(dataSavedBytes)} Saved • Shield Active` : 'AdGuard Online • Zero Threats'}
                       </div>
                     </div>
                   </div>
@@ -2570,6 +2685,14 @@ export default function App() {
                       </button>
                       <button
                         className="btn-secondary"
+                        onClick={handleResetAdguardStats}
+                        title="Reset All Blocked Counts to Zero"
+                        style={{ padding: '6px 12px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, borderColor: 'rgba(255, 171, 0, 0.4)', color: '#ffab00' }}
+                      >
+                        <RotateCcw size={13} /> Reset to 0
+                      </button>
+                      <button
+                        className="btn-secondary"
                         onClick={refreshActiveDns}
                         title="Refresh Shield Status"
                         style={{ padding: '6px 10px' }}
@@ -2730,7 +2853,9 @@ export default function App() {
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <PieChart size={16} color="#00e676" />
-                        <span style={{ fontSize: 18, fontWeight: 700, color: theme === 'crystal' ? '#00e676' : '#059669' }}>48.5 MB</span>
+                        <span style={{ fontSize: 18, fontWeight: 700, color: theme === 'crystal' ? '#00e676' : '#059669' }}>
+                          {formatBytes(dataSavedBytes)}
+                        </span>
                       </div>
                       <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 4 }}>
                         data saved
@@ -2748,7 +2873,9 @@ export default function App() {
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <ShieldCheck size={16} color="#00e676" />
-                        <span style={{ fontSize: 18, fontWeight: 700, color: theme === 'crystal' ? '#00e676' : '#059669' }}>1,280</span>
+                        <span style={{ fontSize: 18, fontWeight: 700, color: theme === 'crystal' ? '#00e676' : '#059669' }}>
+                          {(adsBlocked + trackersBlocked).toLocaleString()}
+                        </span>
                       </div>
                       <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 4 }}>
                         total blocked
