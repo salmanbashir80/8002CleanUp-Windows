@@ -68,14 +68,15 @@ jobs:
           Copy-Item "RELEASE_NOTES.md" -Destination $gumroadDir\
           Copy-Item "EULA.txt" -Destination $gumroadDir\
           Copy-Item "COMMERCIAL_README.txt" -Destination $gumroadDir\
-          Compress-Archive -Path "$gumroadDir\*" -DestinationPath "release\8002CleanUp-Windows-v2.5.1-Gumroad.zip" -Force
+          $pkgVersion = (Get-Content package.json | ConvertFrom-Json).version
+          Compress-Archive -Path "$gumroadDir\*" -DestinationPath "release\8002CleanUp-Windows-v$pkgVersion-Gumroad.zip" -Force
           Write-Host "Gumroad ZIP Created:"
-          Get-Item "release\8002CleanUp-Windows-v2.5.1-Gumroad.zip" | Select-Object Name, Length
+          Get-Item "release\8002CleanUp-Windows-v$pkgVersion-Gumroad.zip" | Select-Object Name, Length
 
       - name: Upload Windows EXE & Commercial Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: 8002CleanUp-Windows-v2.5.1-Release-Package
+          name: 8002CleanUp-Windows-Release-Package
           path: |
             release/*.exe
             release/*.zip

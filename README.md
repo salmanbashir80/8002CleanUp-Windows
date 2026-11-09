@@ -1,7 +1,7 @@
-# 8002CleanUp Pro — Windows 10 & Windows 11 Edition (`v2.5.0`)
+# 8002CleanUp Pro — Windows 10 & Windows 11 Edition (`v2.5.2`)
 
 [![Build Windows 10 & 11 EXE](https://github.com/salmanbashir80/8002CleanUp-Windows/actions/workflows/build-windows.yml/badge.svg)](https://github.com/salmanbashir80/8002CleanUp-Windows/actions/workflows/build-windows.yml)
-[![Commercial License](https://img.shields.io/badge/License-Commercial%20%2F%20Gumroad-brightgreen)](https://salmanbashir80.gumroad.com/l/8002cleanup-pro)
+[![Commercial License](https://img.shields.io/badge/License-Commercial%20%2F%20Gumroad-brightgreen)](https://salman8002.gumroad.com/l/8002cleanup-windows)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%20Windows%2011%20(x64)-blue)](#)
 
 **8002CleanUp Pro for Windows 10 & 11** is a commercial-grade, native Windows desktop optimization and privacy utility featuring a signature **3D Aurora Glass UI**, genuine native Windows system cleaning, dual-layer Network Shield, **NOVA AI Cyber Guardian Pet**, **Live Website Trust Scanner (0–100 Score)**, Battery Lifeguard, Activity Monitor, and commercial Gumroad fulfillment.
@@ -43,7 +43,8 @@
    - DoD 5220 multi-pass secure file shredder.
 
 6. **Commercial Licensing & Gumroad Fulfillment**
-   - Online Gumroad license key verification (`https://api.gumroad.com/v2/licenses/verify`) with offline caching.
+   - Online Gumroad license key verification (`https://api.gumroad.com/v2/licenses/verify`) with official Product ID `eyirop`.
+   - Store Link: `https://salman8002.gumroad.com/l/8002cleanup-windows`
    - Offline Cryptographic Pro keys (`8002-PRO-XXXX-XXXX-XXXX`) for air-gapped systems.
    - 7-Day Free Trial evaluation mode.
 
@@ -51,10 +52,10 @@
 
 ## 🚀 Download Windows `.exe`
 
-Go to [**GitHub Releases**](https://github.com/salmanbashir80/8002CleanUp-Windows/releases) or [**Gumroad**](https://salmanbashir80.gumroad.com/l/8002cleanup-pro) to download:
-- **`8002CleanUp-Windows-Setup-v2.5.0.exe`** (Full Windows 10/11 Setup Installer with Desktop & Start Menu shortcuts)
-- **`8002CleanUp-Windows-Portable-v2.5.0.exe`** (Single-click Portable `.exe` — no installation required)
-- **`8002CleanUp-Windows-Commercial-v2.5.0.zip`** (Commercial distribution bundle with EULA and Setup guide)
+Go to [**GitHub Releases**](https://github.com/salmanbashir80/8002CleanUp-Windows/releases) or [**Gumroad**](https://salman8002.gumroad.com/l/8002cleanup-windows) to download:
+- **`8002CleanUp-Windows-Setup-v2.5.2.exe`** (Full Windows 10/11 Setup Installer with Desktop & Start Menu shortcuts)
+- **`8002CleanUp-Windows-Portable-v2.5.2.exe`** (Single-click Portable `.exe` — no installation required)
+- **`8002CleanUp-Windows-Commercial-v2.5.2.zip`** (Commercial distribution bundle with EULA and Setup guide)
 
 ---
 

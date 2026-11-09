@@ -48,5 +48,5 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 7. SUPPORT AND INQUIRIES
 For customer support, license transfers, and technical inquiries, contact:
 Email: salmanbashir80@github.com
-Gumroad Store: https://salmanbashir80.gumroad.com/l/8002cleanup-pro
+Gumroad Store: https://salman8002.gumroad.com/l/8002cleanup-windows
 GitHub Repository: https://github.com/salmanbashir80/8002CleanUp-Windows

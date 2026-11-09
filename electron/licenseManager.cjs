@@ -27,7 +27,9 @@ try {
 
 const TRIAL_DAYS = 7;
 const OFFLINE_GRACE_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
-const DEFAULT_GUMROAD_PRODUCT_ID = process.env.GUMROAD_PRODUCT_ID || '';
+const OFFICIAL_GUMROAD_PRODUCT_ID = 'eyirop';
+const DEFAULT_GUMROAD_PRODUCT_ID = process.env.GUMROAD_PRODUCT_ID || OFFICIAL_GUMROAD_PRODUCT_ID;
+const OFFICIAL_GUMROAD_PRODUCT_URL = 'https://salman8002.gumroad.com/l/8002cleanup-windows';
 
 // Vendor Ed25519 Public Key for offline commercial license verification.
 // PRIVATE SIGNING KEY IS NEVER EMBEDDED IN CLIENT BUILDS OR COMMITTED TO THE REPO.
@@ -597,6 +599,8 @@ module.exports = {
   isOsStorageAvailable,
   getMachineFingerprint,
   VENDOR_PUBLIC_KEY,
+  OFFICIAL_GUMROAD_PRODUCT_ID,
   DEFAULT_GUMROAD_PRODUCT_ID,
+  OFFICIAL_GUMROAD_PRODUCT_URL,
   OFFLINE_GRACE_MS
 };

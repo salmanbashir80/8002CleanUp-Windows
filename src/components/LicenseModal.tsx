@@ -95,7 +95,7 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({
 
   const handleOpenGumroad = () => {
     if ((window as any).electronAPI?.openExternal) {
-      (window as any).electronAPI.openExternal('https://salmanbashir80.gumroad.com/l/8002cleanup-pro');
+      (window as any).electronAPI.openExternal('https://salman8002.gumroad.com/l/8002cleanup-windows');
     }
   };
 

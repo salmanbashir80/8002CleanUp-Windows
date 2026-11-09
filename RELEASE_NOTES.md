@@ -1,3 +1,28 @@
+# 8002CleanUp Pro v2.5.2 — Commercial Gumroad Integration Release Notes
+
+**Release Date:** November 9, 2026  
+**Target Operating Systems:** Windows 10 & Windows 11 (64-bit / x64)  
+**Distribution:** Gumroad & GitHub Commercial Release  
+**Official Product ID:** `eyirop`  
+**Live Store Link:** `https://salman8002.gumroad.com/l/8002cleanup-windows`
+
+---
+
+## 🌟 What's New in Version 2.5.2
+
+### 1. Permanent Gumroad Product ID `eyirop`
+- Permanently embedded official Gumroad Product ID `eyirop` into distribution builds and runtime fallback configuration. No missing shell environment variables required on end-user machines.
+- Confirmed against live Gumroad license verification endpoint (`POST https://api.gumroad.com/v2/licenses/verify`).
+
+### 2. Live Store Links & Customer Experience
+- Updated in-app purchase triggers, welcome guides, and license modal buttons directly to the live commercial listing `https://salman8002.gumroad.com/l/8002cleanup-windows`.
+
+### 3. OS-Backed DPAPI Encryption & Tamper Resistance
+- Uses Windows DPAPI via Electron `safeStorage` (with authenticated AES-256-GCM fallback) to secure all local license state.
+- Automated revocation for refunded, disputed, and chargebacked purchases.
+
+---
+
 # 8002CleanUp Pro v2.5.1 — Commercial Security Release Notes
 
 **Release Date:** November 9, 2026  

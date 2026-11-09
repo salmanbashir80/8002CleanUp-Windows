@@ -31,11 +31,10 @@ If your Windows PC does not have internet access:
 
 ## 🛠️ Seller Note: Connecting Your Live Gumroad Product
 
-When creating your product listing on Gumroad:
-1. Under Product Settings, enable **"Generate a unique license key per sale"**.
-2. Copy your unique alphanumeric **Product ID** (or permalink) from the Gumroad URL.
-3. Configure `process.env.GUMROAD_PRODUCT_ID` or pass it when initializing the build.
-4. Test purchase using Gumroad's "Test purchase" toggle to verify live online fulfillment.
+- Official Gumroad Product ID: `eyirop`
+- Live Product Store: `https://salman8002.gumroad.com/l/8002cleanup-windows`
+- Under Product Content on Gumroad, add a **"License key"** block.
+- The desktop binary is permanently configured with `eyirop` out of the box. No manual shell configuration needed on customer PCs.
 
 ---
 

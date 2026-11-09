@@ -1,9 +1,10 @@
 ========================================================================
   8002CleanUp Pro for Windows 10 & 11 — Customer Welcome Guide
 ========================================================================
-Version: v2.5.1 (Commercial Edition)
+Version: v2.5.2 (Commercial Edition)
 Publisher: Salman Bashir / 8002
-Store: https://salmanbashir80.gumroad.com/l/8002cleanup-pro
+Store: https://salman8002.gumroad.com/l/8002cleanup-windows
+Gumroad Product ID: eyirop
 
 Thank you for purchasing 8002CleanUp Pro!
 This package contains everything you need to run 8002CleanUp Pro on your PC.
@@ -11,9 +12,9 @@ This package contains everything you need to run 8002CleanUp Pro on your PC.
 ------------------------------------------------------------------------
 PACKAGE CONTENTS
 ------------------------------------------------------------------------
-1. 8002CleanUp-Windows-Setup-v2.5.1.exe
+1. 8002CleanUp-Windows-Setup-v2.5.2.exe
    - Standard Windows 10/11 Setup Installer with Start Menu & Desktop icons
-2. 8002CleanUp-Windows-Portable-v2.5.1.exe
+2. 8002CleanUp-Windows-Portable-v2.5.2.exe
    - Single-click portable executable — no installation required
 3. EULA.txt
    - End User License Agreement
