@@ -29,6 +29,16 @@ If your Windows PC does not have internet access:
 
 ---
 
+## 🛠️ Seller Note: Connecting Your Live Gumroad Product
+
+When creating your product listing on Gumroad:
+1. Under Product Settings, enable **"Generate a unique license key per sale"**.
+2. Copy your unique alphanumeric **Product ID** (or permalink) from the Gumroad URL.
+3. Configure `process.env.GUMROAD_PRODUCT_ID` or pass it when initializing the build.
+4. Test purchase using Gumroad's "Test purchase" toggle to verify live online fulfillment.
+
+---
+
 ## 🔄 Transferring Your License to a New PC
 
 Your commercial license allows you to transfer your activation when migrating to a new computer:
