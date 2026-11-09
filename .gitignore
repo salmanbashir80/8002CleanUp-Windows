@@ -3,3 +3,7 @@ dist/
 release/
 .DS_Store
 *.log
+
+*.pem
+test/vendor-private-key.pem
+scripts/vendor-private-key.pem

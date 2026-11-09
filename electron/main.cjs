@@ -42,33 +42,15 @@ function execAsync(cmd, timeout = 5000) {
   });
 }
 
-// Known tracking parameters for AdGuard Stealth Mode
-const TRACKING_PARAMS = new Set([
-  'fbclid', 'gclid', 'dclid', 'msclkid', 'twclid', 'ttclid',
-  'mc_cid', 'mc_eid', '_ga', '_gl', 'yclid', 'igshid'
-]);
-
-function cleanTrackingURLString(rawInput) {
-  const trimmed = (rawInput || '').trim();
-  try {
-    const u = new URL(trimmed);
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') {
-      return { cleanedURL: trimmed, removedParams: [] };
-    }
-    const removed = [];
-    const keys = Array.from(u.searchParams.keys());
-    for (const key of keys) {
-      const lower = key.toLowerCase();
-      if (lower.startsWith('utm_') || TRACKING_PARAMS.has(lower)) {
-        removed.push(key);
-        u.searchParams.delete(key);
-      }
-    }
-    return { cleanedURL: u.toString(), removedParams: removed };
-  } catch (_e) {
-    return { cleanedURL: trimmed, removedParams: [] };
-  }
-}
+const {
+  isCriticalProcess,
+  isSafeCleanTarget,
+  cleanTrackingURLString,
+  generateHostsShieldContent,
+  removeHostsShieldContent
+} = require('./safetyGuard.cjs');
+const { LicenseManager } = require('./licenseManager.cjs');
+const licenseManager = new LicenseManager(app);
 
 function createWindow() {
   const iconImg = getAppIconImage();
@@ -92,6 +74,23 @@ function createWindow() {
   if (iconImg && process.platform === 'win32') {
     try { mainWindow.setIcon(iconImg); } catch (_e) {}
   }
+
+  // Navigation security: restrict windows from being navigated away or opening untrusted popups
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https://') || url.startsWith('http://')) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
+
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (process.env.VITE_DEV_SERVER_URL && url.startsWith(process.env.VITE_DEV_SERVER_URL)) return;
+    if (url.startsWith('file://')) return;
+    event.preventDefault();
+    if (url.startsWith('https://') || url.startsWith('http://')) {
+      shell.openExternal(url);
+    }
+  });
 
   const devUrl = process.env.VITE_DEV_SERVER_URL;
   if (devUrl) {
@@ -139,6 +138,23 @@ function createTrayWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false
+    }
+  });
+
+  // Navigation security: restrict windows from being navigated away or opening untrusted popups
+  trayWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https://') || url.startsWith('http://')) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
+
+  trayWindow.webContents.on('will-navigate', (event, url) => {
+    if (process.env.VITE_DEV_SERVER_URL && url.startsWith(process.env.VITE_DEV_SERVER_URL)) return;
+    if (url.startsWith('file://')) return;
+    event.preventDefault();
+    if (url.startsWith('https://') || url.startsWith('http://')) {
+      shell.openExternal(url);
     }
   });
 
@@ -625,6 +641,10 @@ ipcMain.handle('get-system-telemetry', async (_event, options = {}) => {
 // IPC 2: Real Quit / Force Terminate Process (Windows taskkill / macOS kill)
 ipcMain.handle('quit-process', async (_event, { pid, name }) => {
   if (!pid) return { ok: false, message: 'Invalid PID' };
+  const criticalCheck = isCriticalProcess(pid, name);
+  if (criticalCheck.isCritical) {
+    return { ok: false, message: `Action Blocked: ${criticalCheck.reason}` };
+  }
   if (process.platform === 'win32') {
     const res = await execAsync(`taskkill /PID ${Number(pid)} /F`);
     return {
@@ -840,6 +860,16 @@ async function purgeDirectoryContentsAsync(dirPath, onProgress) {
 
 // IPC 4: Clean Selected Items (Non-Blocking Native Cleaner)
 ipcMain.handle('clean-items', async (event, { paths, dryRun }) => {
+  const lic = licenseManager.getStatus();
+  if (!dryRun && !lic.isPro && lic.isExpired) {
+    return {
+      cleanedCount: 0,
+      freedBytes: 0,
+      dryRun: false,
+      message: 'License Required: 7-day evaluation trial expired. Please activate 8002CleanUp Pro with a Gumroad license key.'
+    };
+  }
+
   let list = Array.isArray(paths) && paths.length > 0 ? paths : [
     os.tmpdir(),
     'RECYCLE_BIN',
@@ -872,6 +902,11 @@ ipcMain.handle('clean-items', async (event, { paths, dryRun }) => {
       continue;
     }
 
+    if (p !== 'RECYCLE_BIN' && !isSafeCleanTarget(p)) {
+      skippedCount += 1;
+      continue;
+    }
+
     try {
       if (!fs.existsSync(p)) continue;
       const st = await fs.promises.lstat(p).catch(() => null);
@@ -894,7 +929,8 @@ ipcMain.handle('clean-items', async (event, { paths, dryRun }) => {
           // For Windows Temp folders, run a quick native cleanup sweep for stubborn unlocked items
           if (process.platform === 'win32' && (p === os.tmpdir() || p.toLowerCase().includes('windows\\temp'))) {
             try {
-              await execAsync(`powershell -NoProfile -Command "Get-ChildItem -Path '${p}' -Recurse -Force -ErrorAction SilentlyContinue | Where-Object { -not $_.PSIsContainer } | Remove-Item -Force -ErrorAction SilentlyContinue"`, 7000);
+              const safeP = p.replace(/'/g, "''");
+              await execAsync(`powershell -NoProfile -Command "Get-ChildItem -Path '${safeP}' -Recurse -Force -ErrorAction SilentlyContinue | Where-Object { -not $_.PSIsContainer } | Remove-Item -Force -ErrorAction SilentlyContinue"`, 7000);
             } catch (_) {}
           }
         } else {
@@ -1161,27 +1197,84 @@ const AD_HOSTS_LIST = [
 ];
 
 const HOSTS_PATH = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32\\drivers\\etc\\hosts');
-const HOSTS_START_TAG = '# --- 8002CleanUp AdGuard Shield START ---';
-const HOSTS_END_TAG = '# --- 8002CleanUp AdGuard Shield END ---';
+
+function getNetworkBackupDir() {
+  let base = '';
+  try {
+    base = app.getPath('userData');
+  } catch (_) {
+    base = path.join(process.env.APPDATA || os.homedir(), '8002CleanUp Pro');
+  }
+  const dir = path.join(base, 'network_backups');
+  if (!fs.existsSync(dir)) {
+    try { fs.mkdirSync(dir, { recursive: true }); } catch (_) {}
+  }
+  return dir;
+}
+
+function backupOriginalHosts() {
+  if (process.platform !== 'win32') return;
+  try {
+    if (fs.existsSync(HOSTS_PATH)) {
+      const backupFile = path.join(getNetworkBackupDir(), 'hosts.original.bak');
+      if (!fs.existsSync(backupFile)) {
+        fs.copyFileSync(HOSTS_PATH, backupFile);
+      }
+    }
+  } catch (_) {}
+}
+
+async function backupCurrentDns() {
+  if (process.platform !== 'win32') return;
+  try {
+    const backupFile = path.join(getNetworkBackupDir(), 'dns_state.json');
+    if (!fs.existsSync(backupFile)) {
+      const res = await execAsync('netsh interface ipv4 show dns', 3000);
+      const isDhcp = res.stdout ? res.stdout.includes('configured through DHCP') : true;
+      const data = {
+        savedAt: new Date().toISOString(),
+        isDhcp,
+        rawOutput: res.stdout || ''
+      };
+      fs.writeFileSync(backupFile, JSON.stringify(data, null, 2), 'utf8');
+    }
+  } catch (_) {}
+}
+
+function restoreOriginalHosts() {
+  if (process.platform !== 'win32') return { ok: true };
+  try {
+    const backupFile = path.join(getNetworkBackupDir(), 'hosts.original.bak');
+    if (fs.existsSync(backupFile)) {
+      const content = fs.readFileSync(backupFile, 'utf8');
+      fs.writeFileSync(HOSTS_PATH, content, 'utf8');
+      exec('ipconfig /flushdns', () => {});
+      return { ok: true, message: 'Hosts restored from original pre-modification backup.' };
+    }
+    if (fs.existsSync(HOSTS_PATH)) {
+      const current = fs.readFileSync(HOSTS_PATH, 'utf8');
+      const cleaned = removeHostsShieldContent(current);
+      fs.writeFileSync(HOSTS_PATH, cleaned, 'utf8');
+      exec('ipconfig /flushdns', () => {});
+      return { ok: true, message: 'Hosts shield entries removed.' };
+    }
+  } catch (err) {
+    return { ok: false, message: err.message };
+  }
+  return { ok: true };
+}
 
 function applyHostsShield(enable) {
   if (process.platform !== 'win32') return { ok: true };
   try {
     if (!fs.existsSync(HOSTS_PATH)) return { ok: false, reason: 'hosts file not found' };
+    backupOriginalHosts();
     let content = fs.readFileSync(HOSTS_PATH, 'utf8');
 
-    // Remove any existing shield block first
-    const regex = new RegExp(`\\r?\\n?${HOSTS_START_TAG}[\\s\\S]*?${HOSTS_END_TAG}\\r?\\n?`, 'g');
-    content = content.replace(regex, '\n').trim();
-
     if (enable) {
-      const shieldEntries = [
-        HOSTS_START_TAG,
-        '# Active AdGuard & 8002CleanUp Pro System-Level AdBlock Sinkhole (0.0.0.0)',
-        ...AD_HOSTS_LIST.map((d) => `0.0.0.0 ${d}`),
-        HOSTS_END_TAG
-      ].join('\r\n');
-      content = content + '\r\n\r\n' + shieldEntries + '\r\n';
+      content = generateHostsShieldContent(content, AD_HOSTS_LIST);
+    } else {
+      content = removeHostsShieldContent(content);
     }
 
     try {
@@ -1252,6 +1345,9 @@ ipcMain.handle('apply-dns', async (_event, { provider }) => {
     'Quad9 DNS': ['9.9.9.9', '149.112.112.112']
   }[provider] || ['94.140.14.14', '94.140.15.15'];
 
+  // Backup current DNS before modifying
+  await backupCurrentDns();
+
   // Apply Hosts file adblock shield in parallel
   applyHostsShield(true);
 
@@ -1294,6 +1390,42 @@ ipcMain.handle('restore-dns', async () => {
     return { ok: true, message: '✅ Restored Windows network adapter to automatic DHCP / ISP default DNS. Hosts shield removed.' };
   }
   return { ok: true, message: 'Restored ISP Default DHCP DNS servers.' };
+});
+
+// IPC 8.6: Restore All Network & Hosts Backups
+ipcMain.handle('restore-dns-backup', async () => {
+  const hostsRes = restoreOriginalHosts();
+  if (process.platform === 'win32') {
+    const directCmd = `powershell -NoProfile -Command "$adapters = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' -and $_.Name -notmatch 'vEthernet|Virtual|Loopback' }; foreach ($a in $adapters) { try { Set-DnsClientServerAddress -InterfaceIndex $a.ifIndex -ResetServerAddresses -ErrorAction SilentlyContinue } catch {}; try { netsh interface ipv4 set dnsservers name=\\\"$($a.Name)\\\" source=dhcp } catch {} }; Clear-DnsClientCache -ErrorAction SilentlyContinue; ipconfig /flushdns"`;
+    await execAsync(directCmd, 5000);
+  }
+  return { ok: true, message: `✅ Network settings and hosts file restored from original backup. ${hostsRes.message || ''}` };
+});
+
+// IPC 8.7: Query Network Backup Status
+ipcMain.handle('get-dns-backup-status', async () => {
+  const dir = getNetworkBackupDir();
+  const hostsBak = path.join(dir, 'hosts.original.bak');
+  const dnsBak = path.join(dir, 'dns_state.json');
+  return {
+    hasHostsBackup: fs.existsSync(hostsBak),
+    hasDnsBackup: fs.existsSync(dnsBak),
+    hostsBackupPath: hostsBak,
+    dnsBackupPath: dnsBak
+  };
+});
+
+// Commercial Licensing & Gumroad Fulfillment IPC Handlers
+ipcMain.handle('get-license-status', async () => {
+  return licenseManager.getStatus();
+});
+
+ipcMain.handle('activate-license', async (_event, { licenseKey, email }) => {
+  return await licenseManager.activate(licenseKey, email);
+});
+
+ipcMain.handle('deactivate-license', async () => {
+  return licenseManager.deactivate();
 });
 
 // IPC 9: Real ScamAdviser Website Trust Scanner + Nova AI Cyber Guardian Pet (Gemini / Groq / Local)
@@ -1520,10 +1652,15 @@ ipcMain.handle('scan-website-trust', async (_event, { input, apiKey, provider })
 });
 
 ipcMain.handle('open-external', async (_event, { url }) => {
-  if (url && (url.startsWith('https://') || url.startsWith('http://'))) {
-    await shell.openExternal(url);
-  }
-  return { ok: true };
+  if (!url || typeof url !== 'string') return { ok: false };
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:' || url.startsWith('ms-settings:')) {
+      await shell.openExternal(url);
+      return { ok: true };
+    }
+  } catch (_) {}
+  return { ok: false, message: 'Disallowed or invalid URL' };
 });
 
 // ==============================================================

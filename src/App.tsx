@@ -64,6 +64,7 @@ import PowerUserManager from './components/PowerUserManager';
 import DataRecoveryStudio from './components/DataRecoveryStudio';
 import { BrowserCleaner } from './components/BrowserCleaner';
 import { NotificationPanelPopover } from './components/NotificationPanelPopover';
+import { LicenseModal } from './components/LicenseModal';
 
 declare global {
   interface Window {
@@ -113,6 +114,11 @@ declare global {
       pingDns: (provider: string) => Promise<any>;
       applyDns: (provider: string) => Promise<any>;
       restoreDns: () => Promise<any>;
+      getDnsBackupStatus?: () => Promise<any>;
+      restoreDnsBackup?: () => Promise<any>;
+      getLicenseStatus?: () => Promise<any>;
+      activateLicense?: (licenseKey: string, email?: string) => Promise<any>;
+      deactivateLicense?: () => Promise<any>;
       openExternal: (url: string) => Promise<any>;
       toggleTrayPanel?: () => Promise<any>;
       hideTrayPanel?: () => Promise<any>;
@@ -202,8 +208,33 @@ export default function App() {
   });
   const [dryRun, setDryRun] = useState<boolean>(false);
   const [statusBanner, setStatusBanner] = useState<string | null>(
-    '8002CleanUp Pro (MacCare Windows Edition) — All 12 Pro Engines Online.'
+    '8002CleanUp Pro — Windows 10 & 11 Commercial Edition — All 12 Pro Engines Online.'
   );
+
+  // Commercial Licensing & Gumroad Fulfillment State
+  const [licenseStatus, setLicenseStatus] = useState<any>({
+    isPro: true,
+    isTrial: true,
+    plan: '7-Day Free Trial',
+    statusLabel: 'TRIAL ACTIVE',
+    licenseKeyMasked: '',
+    daysLeft: 7,
+    message: ''
+  });
+  const [showLicenseModal, setShowLicenseModal] = useState<boolean>(false);
+
+  const refreshLicenseStatus = async () => {
+    try {
+      if (window.electronAPI?.getLicenseStatus) {
+        const res = await window.electronAPI.getLicenseStatus();
+        if (res) setLicenseStatus(res);
+      }
+    } catch (_) {}
+  };
+
+  useEffect(() => {
+    refreshLicenseStatus();
+  }, []);
 
   // Listen for module navigation events from System Tray Popover
   useEffect(() => {
@@ -462,17 +493,17 @@ export default function App() {
   const refreshTelemetry = async (includeProcs = false) => {
     if (window.electronAPI?.getSystemTelemetry) {
       const data = await window.electronAPI.getSystemTelemetry({
-        includeProcesses: includeProcs || activeModule === 'task_list'
+        includeProcesses: includeProcs || activeModule === 'activity_monitor'
       });
       if (data) setTelemetry(data);
     }
   };
 
   useEffect(() => {
-    refreshTelemetry(activeModule === 'task_list');
+    refreshTelemetry(activeModule === 'activity_monitor');
     const timer = setInterval(() => {
       if (typeof document === 'undefined' || document.visibilityState === 'visible') {
-        refreshTelemetry(activeModule === 'task_list');
+        refreshTelemetry(activeModule === 'activity_monitor');
       }
     }, 4500);
     return () => clearInterval(timer);
@@ -631,6 +662,11 @@ export default function App() {
 
   const handleMasterCleanAndBoost = async () => {
     if (isCleaning) return;
+    if (licenseStatus && !licenseStatus.isPro && licenseStatus.isExpired) {
+      setStatusBanner('⚠️ Your 7-day free trial has expired. Activate a Pro license to execute live system purging.');
+      setShowLicenseModal(true);
+      return;
+    }
     setIsCleaning(true);
     try {
       setCleanProgress({ items: 0, freedBytes: 0, target: 'Phase 1/3: Purging %TEMP%, Recycle Bin & System Junk...' });
@@ -693,6 +729,11 @@ export default function App() {
 
   const handleCleanSelected = async (onlySafeToClean = false) => {
     if (!scanResult?.items || isCleaning) return;
+    if (!dryRun && licenseStatus && !licenseStatus.isPro && licenseStatus.isExpired) {
+      setStatusBanner('⚠️ Your 7-day free trial has expired. Activate a Pro license to execute live cleaning.');
+      setShowLicenseModal(true);
+      return;
+    }
     const toClean = scanResult.items.filter((i: any) =>
       onlySafeToClean ? i.safety === 'Safe to Clean' : i.selected
     );
@@ -1582,6 +1623,24 @@ export default function App() {
               >
                 <Zap size={13} color="#00e5ff" />
                 <span className="hide-on-compact">Notification Panel</span>
+              </button>
+
+              <button
+                className="btn-secondary"
+                onClick={() => setShowLicenseModal(true)}
+                title={licenseStatus.isPro && !licenseStatus.isTrial ? '8002CleanUp Pro Lifetime Active' : `License: ${licenseStatus.statusLabel}`}
+                style={{
+                  padding: '5px 10px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                  background: licenseStatus.isPro && !licenseStatus.isTrial ? 'rgba(0, 230, 118, 0.15)' : 'rgba(0, 229, 255, 0.15)',
+                  border: licenseStatus.isPro && !licenseStatus.isTrial ? '1px solid rgba(0, 230, 118, 0.4)' : '1px solid rgba(0, 229, 255, 0.4)',
+                  color: licenseStatus.isPro && !licenseStatus.isTrial ? '#00e676' : '#00e5ff'
+                }}
+              >
+                <Key size={12} />
+                <span>{licenseStatus.statusLabel || 'PRO'}</span>
               </button>
 
               <button
@@ -3312,8 +3371,44 @@ export default function App() {
                       >
                         Turn OFF Custom DNS (Default ISP)
                       </button>
+                      <button
+                        className="btn-secondary"
+                        onClick={async () => {
+                          if (window.electronAPI?.restoreDnsBackup) {
+                            const res = await window.electronAPI.restoreDnsBackup();
+                            setStatusBanner(res.message);
+                            await refreshActiveDns();
+                          }
+                        }}
+                        disabled={isApplyingDns}
+                        title="Restore pre-modification original hosts file and network adapter configuration from backup"
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: 12,
+                          background: 'rgba(0,229,255,0.15)',
+                          borderColor: '#00e5ff',
+                          color: '#00e5ff'
+                        }}
+                      >
+                        <RotateCcw size={13} /> Restore Network Backup
+                      </button>
                     </div>
                   </div>
+                </div>
+
+                {/* Transparency & Disclaimer Box */}
+                <div
+                  style={{
+                    padding: '12px 16px',
+                    borderRadius: 10,
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    fontSize: 11.5,
+                    color: 'var(--text-secondary)',
+                    lineHeight: 1.5
+                  }}
+                >
+                  ℹ️ <strong>Protection Architecture &amp; Legal Transparency:</strong> 8002CleanUp Pro operates via high-speed Dual-Layer Anycast DNS switching (AdGuard DNS, Cloudflare, Quad9) and local <code>0.0.0.0</code> hosts file sinkholing. It does not install invasive kernel packet drivers or intercept encrypted application traffic. 8002CleanUp Pro is an independent commercial utility developed by 8002 and is not affiliated with, sponsored by, or endorsed by AdGuard, ScamAdviser, or Microsoft Corporation.
                 </div>
 
                 {/* 2. DNS Providers Selection List */}
@@ -3692,7 +3787,7 @@ export default function App() {
                   Hardware metrics queried directly via Windows Management Instrumentation (WMI).
                 </p>
               </div>
-              <button className="btn-secondary" onClick={refreshTelemetry}>
+              <button className="btn-secondary" onClick={() => refreshTelemetry(false)}>
                 <RotateCcw size={14} /> Refresh WMI
               </button>
             </div>
@@ -3764,7 +3859,7 @@ export default function App() {
                   onChange={(e) => setProcSearch(e.target.value)}
                   style={{ width: 180 }}
                 />
-                <button className="btn-secondary" onClick={refreshTelemetry}>
+                <button className="btn-secondary" onClick={() => refreshTelemetry(true)}>
                   <RotateCcw size={14} /> Refresh
                 </button>
               </div>
@@ -4023,6 +4118,15 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* MODAL 3: COMMERCIAL LICENSE & GUMROAD FULFILLMENT */}
+      <LicenseModal
+        isOpen={showLicenseModal}
+        onClose={() => setShowLicenseModal(false)}
+        status={licenseStatus}
+        onRefreshStatus={refreshLicenseStatus}
+        setStatusBanner={setStatusBanner}
+      />
     </div>
   );
 }
