@@ -1,3 +1,28 @@
+# 8002CleanUp Pro v2.5.3 — Commercial Auto-Update Release Notes
+
+**Release Date:** November 9, 2026  
+**Target Operating Systems:** Windows 10 & Windows 11 (64-bit / x64)  
+**Distribution:** Gumroad & GitHub Commercial Release  
+**Official Product ID:** `eyirop`  
+**Live Store Link:** `https://salman8002.gumroad.com/l/8002cleanup-windows`
+
+---
+
+## 🌟 What's New in Version 2.5.3
+
+### 1. In-App Software Update Center (`src/components/UpdateModal.tsx`)
+- Native Windows 10/11 Cyber Glass modal featuring version comparison (`v2.5.2 → v2.5.3`), package selection (Setup Installer vs Portable), release notes, real-time download progress bar, and cryptographic SHA-256 integrity validation.
+- One-click update launch with clear Windows SmartScreen transparency guidance (*"More info" → "Run anyway"* for direct Gumroad releases).
+
+### 2. Automated Draft Release Filtering & Cryptographic Verification
+- Auto-update engine (`electron/updateManager.cjs`) strictly checks official GitHub Releases, automatically ignoring draft releases so pre-release builds remain invisible to customers.
+- On-the-fly streaming SHA-256 calculation against published `SHA256SUMS.txt`. If a mismatched or corrupted hash is detected, the staged binary is **instantly deleted from disk** to guarantee safety.
+
+### 3. Lifetime Customer License & Settings Retention Guarantee
+- All commercial licensing tokens in `%APPDATA%\8002CleanUp Pro\license\license_vault.json` and user configurations remain 100% active and untouched across NSIS installer upgrades. No license re-entry or repurchase needed.
+
+---
+
 # 8002CleanUp Pro v2.5.2 — Commercial Gumroad Integration Release Notes
 
 **Release Date:** November 9, 2026  
