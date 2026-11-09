@@ -27,7 +27,7 @@ try {
 
 const TRIAL_DAYS = 7;
 const OFFLINE_GRACE_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
-const OFFICIAL_GUMROAD_PRODUCT_ID = 'eyirop';
+const OFFICIAL_GUMROAD_PRODUCT_ID = 'lpv4uWXtGoUHvGYrSqKq2w==';
 const DEFAULT_GUMROAD_PRODUCT_ID = process.env.GUMROAD_PRODUCT_ID || OFFICIAL_GUMROAD_PRODUCT_ID;
 const OFFICIAL_GUMROAD_PRODUCT_URL = 'https://salman8002.gumroad.com/l/8002cleanup-windows';
 

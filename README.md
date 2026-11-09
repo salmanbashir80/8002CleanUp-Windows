@@ -43,7 +43,7 @@
    - DoD 5220 multi-pass secure file shredder.
 
 6. **Commercial Licensing & Gumroad Fulfillment**
-   - Online Gumroad license key verification (`https://api.gumroad.com/v2/licenses/verify`) with official Product ID `eyirop`.
+   - Online Gumroad license key verification (`https://api.gumroad.com/v2/licenses/verify`) with official Product ID `lpv4uWXtGoUHvGYrSqKq2w==`.
    - Store Link: `https://salman8002.gumroad.com/l/8002cleanup-windows`
    - Offline Cryptographic Pro keys (`8002-PRO-XXXX-XXXX-XXXX`) for air-gapped systems.
    - 7-Day Free Trial evaluation mode.

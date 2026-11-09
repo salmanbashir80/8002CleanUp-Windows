@@ -23,6 +23,8 @@ console.log('--- Running UpdateManager Automated Test Suite ---');
 
 // TEST 1: SemVer Comparison Logic
 console.log('[TEST 1] SemVer comparison monotonicity');
+assert.strictEqual(semverCompare('2.5.4', '2.5.3'), 1, '2.5.4 should be newer than 2.5.3');
+assert.strictEqual(semverCompare('v2.5.4', '2.5.3'), 1, 'v2.5.4 should be newer than 2.5.3');
 assert.strictEqual(semverCompare('2.5.3', '2.5.2'), 1, '2.5.3 should be newer than 2.5.2');
 assert.strictEqual(semverCompare('v2.5.3', '2.5.2'), 1, 'v2.5.3 should be newer than 2.5.2');
 assert.strictEqual(semverCompare('2.5.2', '2.5.1'), 1, '2.5.2 should be newer than 2.5.1');
@@ -32,7 +34,7 @@ assert.strictEqual(semverCompare('2.5.1', '2.5.1'), 0, '2.5.1 should equal 2.5.1
 assert.strictEqual(semverCompare('v2.5.1', '2.5.1'), 0, 'v2.5.1 should equal 2.5.1');
 assert.strictEqual(semverCompare('2.5.0', '2.5.1'), -1, '2.5.0 should be older than 2.5.1');
 assert.strictEqual(semverCompare('2.4.3', '2.5.1'), -1, '2.4.3 should be older than 2.5.1');
-assert.strictEqual(semverCompare('2.5.3', '2.5.3-beta.1'), 1, 'stable 2.5.3 should be newer than 2.5.3-beta.1');
+assert.strictEqual(semverCompare('2.5.4', '2.5.4-beta.1'), 1, 'stable 2.5.4 should be newer than 2.5.4-beta.1');
 console.log('✓ SemVer comparison passed all monotonicity checks.');
 
 // TEST 2: Release Metadata & Asset Parsing

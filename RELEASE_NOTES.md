@@ -1,3 +1,25 @@
+# 8002CleanUp Pro v2.5.4 — Commercial Gumroad Internal Product ID Alignment
+
+**Release Date:** November 9, 2026  
+**Target Operating Systems:** Windows 10 & Windows 11 (64-bit / x64)  
+**Distribution:** Gumroad & GitHub Commercial Release  
+**Official Gumroad Product ID:** `lpv4uWXtGoUHvGYrSqKq2w==`  
+**Live Store Link:** `https://salman8002.gumroad.com/l/8002cleanup-windows`
+
+---
+
+## 🌟 What's New in Version 2.5.4
+
+### 1. Verified Gumroad Internal Product ID (`lpv4uWXtGoUHvGYrSqKq2w==`)
+- Updated native license verification configuration with the verified internal Product ID (`lpv4uWXtGoUHvGYrSqKq2w==`) required by Gumroad's official License Key API (`POST https://api.gumroad.com/v2/licenses/verify`).
+- Retains non-incrementing background re-check logic (`increment_uses_count: false`) to prevent duplicate activation counting on standard application launches.
+
+### 2. Complete Auto-Update & Security Preservation
+- Maintains the in-app Software Update Center (`UpdateModal.tsx` and `updateManager.cjs`), automated draft release isolation, and streaming SHA-256 integrity verification.
+- Fully preserves DPAPI-encrypted customer license tokens (`%APPDATA%\8002CleanUp Pro\license\license_vault.json`) and user preferences across upgrades.
+
+---
+
 # 8002CleanUp Pro v2.5.3 — Commercial Auto-Update Release Notes
 
 **Release Date:** November 9, 2026  

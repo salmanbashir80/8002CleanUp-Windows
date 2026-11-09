@@ -31,10 +31,10 @@ If your Windows PC does not have internet access:
 
 ## 🛠️ Seller Note: Connecting Your Live Gumroad Product
 
-- Official Gumroad Product ID: `eyirop`
+- Official Gumroad Product ID: `lpv4uWXtGoUHvGYrSqKq2w==`
 - Live Product Store: `https://salman8002.gumroad.com/l/8002cleanup-windows`
 - Under Product Content on Gumroad, add a **"License key"** block.
-- The desktop binary is permanently configured with `eyirop` out of the box. No manual shell configuration needed on customer PCs.
+- The desktop binary is permanently configured with `lpv4uWXtGoUHvGYrSqKq2w==` out of the box. No manual shell configuration needed on customer PCs.
 
 ---
 
