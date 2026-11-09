@@ -66,6 +66,31 @@ contextBridge.exposeInMainWorld('electronAPI', {
   scanBrowserData: () => ipcRenderer.invoke('scan-browser-data'),
   cleanBrowserData: (payload) => ipcRenderer.invoke('clean-browser-data', payload),
   closeBrowserProcess: (processName) => ipcRenderer.invoke('close-browser-process', { processName }),
+  checkForUpdates: (manual = true) => ipcRenderer.invoke('check-for-updates', { manual }),
+  startDownloadUpdate: () => ipcRenderer.invoke('start-download-update'),
+  installUpdate: () => ipcRenderer.invoke('install-update'),
+  cancelUpdate: () => ipcRenderer.invoke('cancel-update'),
+  getUpdateStatus: () => ipcRenderer.invoke('get-update-status'),
+  onUpdateAvailable: (callback) => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on('update-available', listener);
+    return () => ipcRenderer.removeListener('update-available', listener);
+  },
+  onUpdateProgress: (callback) => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on('update-progress', listener);
+    return () => ipcRenderer.removeListener('update-progress', listener);
+  },
+  onUpdateStatus: (callback) => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on('update-status', listener);
+    return () => ipcRenderer.removeListener('update-status', listener);
+  },
+  onUpdateError: (callback) => {
+    const listener = (_event, data) => callback(data);
+    ipcRenderer.on('update-error', listener);
+    return () => ipcRenderer.removeListener('update-error', listener);
+  },
   onBrowserCleanProgress: (callback) => {
     const listener = (_event, data) => callback(data);
     ipcRenderer.on('browser-clean-progress', listener);

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Shield,
   Sparkles,
+  Download,
   Trash2,
   Globe,
   Cpu,
@@ -65,6 +66,7 @@ import DataRecoveryStudio from './components/DataRecoveryStudio';
 import { BrowserCleaner } from './components/BrowserCleaner';
 import { NotificationPanelPopover } from './components/NotificationPanelPopover';
 import { LicenseModal } from './components/LicenseModal';
+import { UpdateModal, UpdateInfo } from './components/UpdateModal';
 
 declare global {
   interface Window {
@@ -125,6 +127,15 @@ declare global {
       openMainModule?: (module: string) => Promise<any>;
       quitApp?: () => Promise<any>;
       emptyRecycleBin?: () => Promise<any>;
+      checkForUpdates?: (manual?: boolean) => Promise<any>;
+      startDownloadUpdate?: () => Promise<any>;
+      installUpdate?: () => Promise<any>;
+      cancelUpdate?: () => Promise<any>;
+      getUpdateStatus?: () => Promise<any>;
+      onUpdateAvailable?: (cb: (data: any) => void) => () => void;
+      onUpdateProgress?: (cb: (data: any) => void) => () => void;
+      onUpdateStatus?: (cb: (data: any) => void) => () => void;
+      onUpdateError?: (cb: (data: any) => void) => () => void;
       onNavigateModule?: (cb: (mod: string) => void) => () => void;
       onClipboardUrlCleaned: (cb: (data: any) => void) => () => void;
       onCleanProgress?: (cb: (data: any) => void) => () => void;
@@ -234,6 +245,54 @@ export default function App() {
 
   useEffect(() => {
     refreshLicenseStatus();
+  }, []);
+
+  // Customer Update System State & Background Notification Handlers
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [showUpdateModal, setShowUpdateModal] = useState<boolean>(false);
+  const [isUpdateBannerDismissed, setIsUpdateBannerDismissed] = useState<boolean>(false);
+
+  const handleCheckForUpdates = async () => {
+    const electronAPI = (window as any).electronAPI;
+    if (!electronAPI?.checkForUpdates) return;
+    setStatusBanner('Checking official channel for 8002CleanUp Pro updates...');
+    try {
+      const res = await electronAPI.checkForUpdates(true);
+      if (res && res.updateAvailable) {
+        setUpdateInfo(res);
+        setIsUpdateBannerDismissed(false);
+        setShowUpdateModal(true);
+        setStatusBanner(`Update v${res.latestVersion} is available!`);
+      } else {
+        setUpdateInfo(res);
+        setShowUpdateModal(true);
+        setStatusBanner(`You are running the latest version (v${res?.currentVersion || '2.5.1'}).`);
+      }
+    } catch (err: any) {
+      setStatusBanner(`Update check failed: ${err.message}`);
+    }
+  };
+
+  useEffect(() => {
+    const electronAPI = (window as any).electronAPI;
+    if (!electronAPI) return;
+
+    const cleanupAvailable = electronAPI.onUpdateAvailable?.((data: UpdateInfo) => {
+      if (data && data.updateAvailable) {
+        setUpdateInfo(data);
+        setIsUpdateBannerDismissed(false);
+      }
+    });
+
+    electronAPI.getUpdateStatus?.().then((res: any) => {
+      if (res && res.updateInfo && res.updateInfo.updateAvailable) {
+        setUpdateInfo(res.updateInfo);
+      }
+    }).catch(() => {});
+
+    return () => {
+      if (cleanupAvailable) cleanupAvailable();
+    };
   }, []);
 
   // Listen for module navigation events from System Tray Popover
@@ -1421,7 +1480,7 @@ export default function App() {
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 6 }}>
-            <span style={{ color: 'var(--text-secondary)' }}>v2.4.3 Pro</span>
+            <span style={{ color: 'var(--text-secondary)' }}>v2.5.1 Pro</span>
             <span style={{ color: '#18e299', fontWeight: 600 }}>● Live Engine</span>
           </div>
           <button
@@ -1646,6 +1705,37 @@ export default function App() {
 
               <button
                 className="btn-secondary"
+                onClick={handleCheckForUpdates}
+                title="Check for 8002CleanUp Pro Updates"
+                style={{
+                  padding: '5px 9px',
+                  fontSize: 11,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  background: updateInfo && updateInfo.updateAvailable ? 'rgba(0, 229, 255, 0.2)' : undefined,
+                  border: updateInfo && updateInfo.updateAvailable ? '1px solid rgba(0, 229, 255, 0.5)' : undefined
+                }}
+              >
+                <Sparkles size={12} color="#00e5ff" />
+                <span className="hide-on-compact">
+                  {updateInfo && updateInfo.updateAvailable ? 'Update Ready' : 'Updates'}
+                </span>
+                {updateInfo && updateInfo.updateAvailable && (
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: '#00e676',
+                      boxShadow: '0 0 6px #00e676'
+                    }}
+                  />
+                )}
+              </button>
+
+              <button
+                className="btn-secondary"
                 onClick={() => setTheme(theme === 'crystal' ? 'pearl' : 'crystal')}
                 title="Toggle Crystal Sapphire / Pearl Light Glass Look"
                 style={{ padding: '5px 8px' }}
@@ -1669,6 +1759,100 @@ export default function App() {
             </div>
           )}
         </header>
+
+        {/* In-App Update Notification Banner */}
+        {updateInfo && updateInfo.updateAvailable && !isUpdateBannerDismissed && (
+          <div
+            style={{
+              margin: '10px 20px 0 20px',
+              padding: '10px 16px',
+              borderRadius: 12,
+              background: 'linear-gradient(90deg, rgba(0, 229, 255, 0.16), rgba(139, 61, 255, 0.16))',
+              border: '1px solid rgba(0, 229, 255, 0.45)',
+              boxShadow: '0 6px 20px rgba(0, 0, 0, 0.35)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  background: 'linear-gradient(135deg, #00e5ff, #8b3dff)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <Sparkles size={16} color="#fff" />
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>
+                    New Version Available: v{updateInfo.latestVersion}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: '1px 6px',
+                      borderRadius: 4,
+                      background: 'rgba(0, 229, 255, 0.2)',
+                      color: '#00e5ff'
+                    }}
+                  >
+                    You have v{updateInfo.currentVersion}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11.5, color: 'rgba(255, 255, 255, 0.75)', marginTop: 2 }}>
+                  Official commercial update with latest performance upgrades and security fixes.
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                onClick={() => setShowUpdateModal(true)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 6,
+                  background: 'linear-gradient(135deg, #00e5ff, #8b3dff)',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5
+                }}
+              >
+                <Download size={13} />
+                <span>Update to Latest</span>
+              </button>
+
+              <button
+                onClick={() => setIsUpdateBannerDismissed(true)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: 'none',
+                  borderRadius: 6,
+                  color: 'rgba(255, 255, 255, 0.65)',
+                  cursor: 'pointer',
+                  padding: 6
+                }}
+                title="Dismiss update banner for this session"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ============================================================== */}
         {/* 1. MODULE: SMART CARE DASHBOARD (MAXIMIZE & FULLSCREEN OPTIMIZED) */}
@@ -3958,7 +4142,8 @@ export default function App() {
                 ['RAM & Standby Purger', 'Reclaim unreferenced physical working-set memory', handleOptimizeRam],
                 ['Flush DNS Cache', 'Instantly purge Windows resolver DNS cache', handleFlushDns],
                 ['Game Turbo Mode', 'High-performance CPU priority & telemetry pause', handleToggleGameTurbo],
-                ['Battery Lifeguard', 'WMI charging status and real Celsius temperature', () => setActiveModule('battery_lifeguard')]
+                ['Battery Lifeguard', 'WMI charging status and real Celsius temperature', () => setActiveModule('battery_lifeguard')],
+                ['Customer Software Updates', 'Check official channel for verified updates and lifetime Pro upgrades', handleCheckForUpdates]
               ].map(([title, desc, action]: any, i) => (
                 <div key={i} className="glass-card interactive" onClick={action}>
                   <div style={{ fontSize: 15, fontWeight: 600, color: '#00e5ff' }}>{title}</div>
@@ -4139,6 +4324,14 @@ export default function App() {
         status={licenseStatus}
         onRefreshStatus={refreshLicenseStatus}
         setStatusBanner={setStatusBanner}
+      />
+
+      {/* MODAL 4: CUSTOMER UPDATE SYSTEM */}
+      <UpdateModal
+        isOpen={showUpdateModal}
+        onClose={() => setShowUpdateModal(false)}
+        updateInfo={updateInfo}
+        onCheckAgain={handleCheckForUpdates}
       />
     </div>
   );

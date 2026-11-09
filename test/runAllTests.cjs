@@ -12,7 +12,8 @@ console.log('====================================================\n');
 
 const tests = [
   { name: 'License & Gumroad Manager Tests', file: 'test/licenseManager.test.cjs' },
-  { name: 'Windows Safety Guard & Path Allowlist Tests', file: 'test/safetyGuard.test.cjs' }
+  { name: 'Windows Safety Guard & Path Allowlist Tests', file: 'test/safetyGuard.test.cjs' },
+  { name: 'Customer Update System & Rollback Tests', file: 'test/updateManager.test.cjs' }
 ];
 
 let totalPassed = 0;

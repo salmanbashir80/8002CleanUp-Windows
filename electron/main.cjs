@@ -51,6 +51,25 @@ const {
 } = require('./safetyGuard.cjs');
 const { LicenseManager } = require('./licenseManager.cjs');
 const licenseManager = new LicenseManager(app);
+const { UpdateManager } = require('./updateManager.cjs');
+const updateManager = new UpdateManager(app);
+
+// Broadcast update manager events to renderer
+updateManager.on('status', (status) => {
+  if (mainWindow && mainWindow.webContents && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update-status', status);
+  }
+});
+updateManager.on('progress', (progress) => {
+  if (mainWindow && mainWindow.webContents && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update-progress', progress);
+  }
+});
+updateManager.on('error', (err) => {
+  if (mainWindow && mainWindow.webContents && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update-error', err);
+  }
+});
 
 function createWindow() {
   const iconImg = getAppIconImage();
@@ -457,11 +476,13 @@ if (!gotSingleLock) {
     createSystemTray();
     startClipboardMonitor();
     startLiveNetworkMonitor();
+    updateManager.startPeriodicChecks(() => mainWindow);
   });
 }
 
 app.on('before-quit', () => {
   isQuitting = true;
+  updateManager.stopPeriodicChecks();
   if (clipboardInterval) { clearInterval(clipboardInterval); clipboardInterval = null; }
   if (netSpeedInterval) { clearInterval(netSpeedInterval); netSpeedInterval = null; }
 });
@@ -1497,6 +1518,31 @@ ipcMain.handle('activate-license', async (_event, { licenseKey, email }) => {
 
 ipcMain.handle('deactivate-license', async () => {
   return licenseManager.deactivate();
+});
+
+// Customer Update System Handlers
+ipcMain.handle('check-for-updates', async (_event, { manual } = {}) => {
+  return await updateManager.checkForUpdates({ manual: !!manual });
+});
+
+ipcMain.handle('start-download-update', async () => {
+  return await updateManager.downloadAndVerifyUpdate((progress) => {
+    if (mainWindow && mainWindow.webContents && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update-progress', progress);
+    }
+  });
+});
+
+ipcMain.handle('install-update', async () => {
+  return updateManager.installUpdate();
+});
+
+ipcMain.handle('cancel-update', async () => {
+  return updateManager.cancelUpdate();
+});
+
+ipcMain.handle('get-update-status', async () => {
+  return updateManager.getStatus();
 });
 
 // IPC 9: Real ScamAdviser Website Trust Scanner + Nova AI Cyber Guardian Pet (Gemini / Groq / Local)
