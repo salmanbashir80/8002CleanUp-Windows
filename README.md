@@ -2,6 +2,14 @@
 
 **8002CleanUp Pro for Windows 10 & 11** brings the signature **3D Aurora Glass UI** from MacCare Pro to Windows with real native Windows system cleaning, AdGuard-grade Network & Stealth Protection, **NOVA AI Cyber Guardian Pet**, **ScamAdviser Live Website Trust Scanner (0–100 Score)**, Battery Lifeguard (`°C` thermal & charge stats), Activity Monitor, and My Tools.
 
+## 🛒 Get the Latest Version on Gumroad
+
+**[Buy 8002 CleanUp Pro for Windows on Gumroad — $14.99](https://salman8002.gumroad.com/l/8002cleanup-windows?offer_code=LAUNCH20)**
+
+- 🎉 **Launch offer: 20% off with code `LAUNCH20`** — **$11.99** (the link above applies the code automatically)
+- ✅ Latest version **v2.5.4** — instant download, license key delivered by email
+- 🆓 **7-day free trial** included — one-time purchase, no subscription
+
 ---
 
 ## ✨ Features (Windows 10 & Windows 11)
