@@ -34,14 +34,18 @@ const mockEnv = {
 assert.strictEqual(isSafeCleanTarget('C:\\', mockEnv), false, 'C:\\ must be rejected');
 assert.strictEqual(isSafeCleanTarget('C:\\Windows', mockEnv), false, 'C:\\Windows must be rejected');
 assert.strictEqual(isSafeCleanTarget('C:\\Windows\\System32', mockEnv), false, 'System32 must be rejected');
+assert.strictEqual(isSafeCleanTarget('C:\\Windows\\System32\\ntoskrnl.exe', mockEnv), false, 'System32 file must be rejected');
 assert.strictEqual(isSafeCleanTarget('C:\\Program Files', mockEnv), false, 'Program Files must be rejected');
+assert.strictEqual(isSafeCleanTarget('C:\\Program Files (x86)', mockEnv), false, 'Program Files (x86) must be rejected');
 assert.strictEqual(isSafeCleanTarget('C:\\Users\\TestUser', mockEnv), false, 'Home dir must be rejected');
 assert.strictEqual(isSafeCleanTarget('C:\\Users\\TestUser\\Desktop', mockEnv), false, 'Desktop must be rejected');
 assert.strictEqual(isSafeCleanTarget('C:\\Users\\TestUser\\Documents', mockEnv), false, 'Documents must be rejected');
 assert.strictEqual(isSafeCleanTarget('C:\\Users\\TestUser\\Downloads\\file.zip', mockEnv), false, 'Downloads must be rejected');
+assert.strictEqual(isSafeCleanTarget('C:\\Users\\TestUser\\Pictures', mockEnv), false, 'Pictures must be rejected');
 
 // Traversal attempts
 assert.strictEqual(isSafeCleanTarget('C:\\Windows\\Temp\\..\\..\\Windows\\System32', mockEnv), false, 'Traversal must be rejected');
+assert.strictEqual(isSafeCleanTarget('C:\\Users\\TestUser\\AppData\\Local\\Temp\\..\\..\\..\\Windows', mockEnv), false, 'Traversal out of AppData must be rejected');
 
 // Safe targets that MUST be accepted
 assert.strictEqual(isSafeCleanTarget('RECYCLE_BIN', mockEnv), true, 'RECYCLE_BIN is safe');

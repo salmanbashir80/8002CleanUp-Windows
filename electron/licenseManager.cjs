@@ -1,7 +1,13 @@
 /**
  * 8002CleanUp Pro — Commercial Licensing & Trial Management Engine
- * Uses Asymmetric Ed25519 Public-Key Verification (No private keys embedded)
- * + Gumroad Online License API + 7-Day Free Evaluation Trial
+ * Windows 10 & 11 Commercial Distribution
+ *
+ * Security Hardening:
+ * 1. Tamper-Resistant Local Entitlements (Machine-Bound HMAC)
+ * 2. Cryptographic Ed25519 Offline Receipts (Verified exclusively with VENDOR_PUBLIC_KEY)
+ * 3. Gumroad API (product_id, refund/dispute/chargeback rejection, non-incrementing re-verification)
+ * 4. 14-day Offline Grace Period with Automatic Revocation Check
+ * 5. Tamper-Resistant 7-Day Evaluation Trial
  */
 
 const fs = require('fs');
@@ -11,7 +17,8 @@ const crypto = require('crypto');
 const https = require('https');
 
 const TRIAL_DAYS = 7;
-const GUMROAD_PERMALINK = '8002cleanup-pro';
+const OFFLINE_GRACE_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
+const DEFAULT_GUMROAD_PRODUCT_ID = '8002cleanup-pro-windows';
 
 // Vendor Ed25519 Public Key for offline commercial license verification.
 // PRIVATE SIGNING KEY IS NEVER EMBEDDED IN CLIENT BUILDS OR COMMITTED TO THE REPO.
@@ -25,7 +32,8 @@ function getMachineFingerprint() {
     os.arch() || 'x64',
     os.platform() || 'win32',
     process.env.COMPUTERNAME || '',
-    process.env.USERDOMAIN || ''
+    process.env.USERDOMAIN || '',
+    process.env.HOMEPATH || os.homedir() || ''
   ];
   return crypto.createHash('sha256').update(parts.join('::')).digest('hex').slice(0, 32);
 }
@@ -48,15 +56,15 @@ function getStorageDir(appInstance) {
 }
 
 /**
- * Validates an asymmetric offline Pro license key.
+ * Validates an asymmetric offline Pro license key / server-signed receipt.
  * Format: 8002-PRO.<base64url(payload)>.<base64url(signature)>
  * Verified exclusively against VENDOR_PUBLIC_KEY using Ed25519.
+ * An attacker cannot forge this without the vendor's private key.
  */
 function verifyOfflineKey(rawKey, pubKey = VENDOR_PUBLIC_KEY) {
   if (!rawKey || typeof rawKey !== 'string') return { valid: false };
   const clean = rawKey.trim();
 
-  // Must match prefix
   if (!clean.startsWith('8002-PRO.')) return { valid: false };
 
   const parts = clean.slice('8002-PRO.'.length).split('.');
@@ -76,11 +84,16 @@ function verifyOfflineKey(rawKey, pubKey = VENDOR_PUBLIC_KEY) {
       return { valid: false };
     }
 
+    if (payload.expiresAt && Date.now() > Date.parse(payload.expiresAt)) {
+      return { valid: false, expired: true, message: 'License has expired.' };
+    }
+
     return {
       valid: true,
       email: payload.email || 'Licensed Customer',
       tier: payload.tier || 'Lifetime Pro',
-      issuedAt: payload.issuedAt
+      issuedAt: payload.issuedAt,
+      machineId: payload.machineId
     };
   } catch (_e) {
     return { valid: false };
@@ -90,10 +103,15 @@ function verifyOfflineKey(rawKey, pubKey = VENDOR_PUBLIC_KEY) {
 /**
  * Verifies key with Gumroad API:
  * POST https://api.gumroad.com/v2/licenses/verify
+ * Uses product_id. Rejects refunds, disputes, and chargebacks.
+ * increment_uses_count is true only on first activation, false on status checks.
  */
-function verifyGumroadApi(licenseKey, permalink = GUMROAD_PERMALINK) {
+function verifyGumroadApi(licenseKey, options = {}) {
+  const productId = options.productId || process.env.GUMROAD_PRODUCT_ID || DEFAULT_GUMROAD_PRODUCT_ID;
+  const incrementUsesCount = Boolean(options.incrementUsesCount);
+
   return new Promise((resolve) => {
-    const postData = `product_permalink=${encodeURIComponent(permalink)}&license_key=${encodeURIComponent(licenseKey)}&increment_uses_count=true`;
+    const postData = `product_id=${encodeURIComponent(productId)}&license_key=${encodeURIComponent(licenseKey)}&increment_uses_count=${incrementUsesCount ? 'true' : 'false'}`;
     const req = https.request(
       'https://api.gumroad.com/v2/licenses/verify',
       {
@@ -110,19 +128,51 @@ function verifyGumroadApi(licenseKey, permalink = GUMROAD_PERMALINK) {
         res.on('end', () => {
           try {
             const data = JSON.parse(body);
-            if (data && data.success === true) {
-              resolve({
-                success: true,
-                uses: data.uses || 1,
-                purchase: data.purchase || {},
-                message: 'Verified successfully via Gumroad.'
-              });
-            } else {
-              resolve({
+            if (!data || data.success !== true) {
+              return resolve({
                 success: false,
-                message: data.message || 'Invalid Gumroad license key.'
+                message: data && data.message ? data.message : 'Invalid Gumroad license key.'
               });
             }
+
+            const purchase = data.purchase || {};
+
+            // Reject invalid, refunded, disputed, or chargebacked purchases
+            if (purchase.refunded) {
+              return resolve({
+                success: false,
+                refunded: true,
+                message: 'License Revoked: This purchase has been refunded.'
+              });
+            }
+            if (purchase.chargebacked) {
+              return resolve({
+                success: false,
+                chargebacked: true,
+                message: 'License Revoked: Chargeback detected for this purchase.'
+              });
+            }
+            if (purchase.disputed) {
+              return resolve({
+                success: false,
+                disputed: true,
+                message: 'License Inactive: This purchase is currently disputed.'
+              });
+            }
+            if (purchase.subscription_cancelled_at || purchase.subscription_failed_at) {
+              return resolve({
+                success: false,
+                cancelled: true,
+                message: 'License Inactive: Associated subscription was cancelled or payment failed.'
+              });
+            }
+
+            resolve({
+              success: true,
+              uses: data.uses || 1,
+              purchase,
+              message: 'Verified successfully via Gumroad API.'
+            });
           } catch (e) {
             resolve({ success: false, message: 'Could not parse Gumroad response.' });
           }
@@ -146,10 +196,25 @@ class LicenseManager {
   constructor(appInstance, options = {}) {
     this.appInstance = appInstance;
     this.publicKey = options.publicKey || VENDOR_PUBLIC_KEY;
+    this.productId = options.productId || process.env.GUMROAD_PRODUCT_ID || DEFAULT_GUMROAD_PRODUCT_ID;
     this.machineId = getMachineFingerprint();
+    this.machineSecret = crypto.createHash('sha256').update(`8002::${this.machineId}::salt_2026`).digest();
     this.storageDir = getStorageDir(appInstance);
     this.licenseFile = path.join(this.storageDir, 'license_vault.json');
     this.trialFile = path.join(this.storageDir, '.trial_epoch');
+    this.offlineGraceMs = options.offlineGraceMs || OFFLINE_GRACE_MS;
+    this.isReverifying = false;
+  }
+
+  _signEntitlement(fields) {
+    const raw = fields.join('::');
+    return crypto.createHmac('sha256', this.machineSecret).update(raw).digest('hex');
+  }
+
+  _verifyEntitlement(fields, expectedHmac) {
+    if (!expectedHmac || typeof expectedHmac !== 'string') return false;
+    const computed = this._signEntitlement(fields);
+    return crypto.timingSafeEqual(Buffer.from(computed, 'hex'), Buffer.from(expectedHmac, 'hex'));
   }
 
   getTrialInfo() {
@@ -157,13 +222,33 @@ class LicenseManager {
     try {
       if (fs.existsSync(this.trialFile)) {
         const raw = fs.readFileSync(this.trialFile, 'utf8').trim();
-        epoch = parseInt(raw, 10) || 0;
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.epoch === 'number' && parsed.hmac) {
+          const expected = this._signEntitlement(['trial', String(parsed.epoch), this.machineId]);
+          if (crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(parsed.hmac, 'hex'))) {
+            epoch = parsed.epoch;
+          } else {
+            // Tampered trial epoch file -> immediate expiration
+            epoch = 0;
+          }
+        }
       } else {
         epoch = Date.now();
-        fs.writeFileSync(this.trialFile, String(epoch), 'utf8');
+        const hmac = this._signEntitlement(['trial', String(epoch), this.machineId]);
+        fs.writeFileSync(this.trialFile, JSON.stringify({ epoch, hmac }, null, 2), 'utf8');
       }
     } catch (_) {
-      epoch = Date.now();
+      epoch = 0;
+    }
+
+    if (epoch === 0) {
+      return {
+        isTrial: false,
+        trialStartedAt: new Date(0).toISOString(),
+        daysElapsed: TRIAL_DAYS + 1,
+        daysLeft: 0,
+        isExpired: true
+      };
     }
 
     const elapsedDays = Math.floor((Date.now() - epoch) / (1000 * 60 * 60 * 24));
@@ -188,25 +273,105 @@ class LicenseManager {
         const data = JSON.parse(raw);
 
         if (data && data.licenseKey) {
-          const offlineCheck = verifyOfflineKey(data.licenseKey, this.publicKey);
-          const isVerifiedGumroad = data.isGumroad && data.verified;
+          // 1. Server-Signed Asymmetric Ed25519 Offline Key / Receipt
+          if (data.type === 'offline_ed25519' || data.licenseKey.startsWith('8002-PRO.')) {
+            // NEVER trust any boolean flags in JSON. Always cryptographically verify against VENDOR_PUBLIC_KEY.
+            const offlineCheck = verifyOfflineKey(data.licenseKey, this.publicKey);
+            if (offlineCheck.valid) {
+              const masked = data.licenseKey.length > 16
+                ? `${data.licenseKey.slice(0, 12)}...${data.licenseKey.slice(-6)}`
+                : 'PRO-ACTIVATED';
+              return {
+                isPro: true,
+                isTrial: false,
+                isExpired: false,
+                plan: 'Commercial Pro Lifetime',
+                statusLabel: 'PRO ACTIVATED',
+                licenseKeyMasked: masked,
+                activatedAt: data.activatedAt || new Date().toISOString(),
+                machineId: this.machineId,
+                type: 'Asymmetric Offline Pro Key (Ed25519)',
+                customerEmail: offlineCheck.email || data.email || 'Commercial Customer',
+                message: '8002CleanUp Pro is fully licensed and active.'
+              };
+            }
+          }
 
-          if (offlineCheck.valid || isVerifiedGumroad) {
-            const masked = data.licenseKey.length > 12
-              ? `${data.licenseKey.slice(0, 8)}...${data.licenseKey.slice(-4)}`
-              : 'PRO-ACTIVATED';
-            return {
-              isPro: true,
-              isTrial: false,
-              plan: 'Commercial Pro Lifetime',
-              statusLabel: 'PRO ACTIVATED',
-              licenseKeyMasked: masked,
-              activatedAt: data.activatedAt || new Date().toISOString(),
-              machineId: this.machineId,
-              type: offlineCheck.valid ? 'Asymmetric Offline Pro Key (Ed25519)' : 'Gumroad Verified License',
-              customerEmail: data.email || 'Commercial Customer',
-              message: '8002CleanUp Pro is fully licensed and active.'
-            };
+          // 2. Gumroad Verified Entitlement
+          if (data.type === 'gumroad') {
+            // Verify tamper-resistant HMAC. If user hand-edited the JSON, HMAC check fails.
+            const isValidHmac = this._verifyEntitlement(
+              [data.licenseKey, data.productId, data.purchaseId || '', data.email || '', String(data.verifiedAt), this.machineId],
+              data.entitlementHmac
+            );
+
+            if (isValidHmac && data.machineId === this.machineId) {
+              const elapsedSinceVerification = Date.now() - (data.verifiedAt || 0);
+
+              // Offline grace period check
+              if (elapsedSinceVerification > this.offlineGraceMs) {
+                return {
+                  isPro: false,
+                  isTrial: false,
+                  isExpired: true,
+                  plan: 'Offline Grace Expired',
+                  statusLabel: 'RE-VERIFY GUMROAD',
+                  licenseKeyMasked: 'REQUIRES-ONLINE-CHECK',
+                  daysLeft: 0,
+                  type: 'Gumroad License (Offline Grace Expired)',
+                  message: 'Offline grace period (14 days) expired. Please connect to the internet to re-verify your Gumroad license.'
+                };
+              }
+
+              // Trigger background periodic re-verification (at most once every 24 hours, non-incrementing)
+              if (elapsedSinceVerification > 24 * 60 * 60 * 1000 && !this.isReverifying) {
+                this.isReverifying = true;
+                verifyGumroadApi(data.licenseKey, { productId: this.productId, incrementUsesCount: false })
+                  .then((reCheck) => {
+                    this.isReverifying = false;
+                    if (reCheck.success) {
+                      // Update verifiedAt timestamp and recompute HMAC
+                      data.verifiedAt = Date.now();
+                      data.entitlementHmac = this._signEntitlement([
+                        data.licenseKey,
+                        data.productId,
+                        data.purchaseId || '',
+                        data.email || '',
+                        String(data.verifiedAt),
+                        this.machineId
+                      ]);
+                      try { fs.writeFileSync(this.licenseFile, JSON.stringify(data, null, 2), 'utf8'); } catch (_) {}
+                    } else if (reCheck.refunded || reCheck.chargebacked || reCheck.disputed || reCheck.cancelled) {
+                      // Revoke immediately
+                      try { fs.unlinkSync(this.licenseFile); } catch (_) {}
+                    }
+                  })
+                  .catch(() => {
+                    this.isReverifying = false;
+                  });
+              }
+
+              const masked = data.licenseKey.length > 12
+                ? `${data.licenseKey.slice(0, 8)}...${data.licenseKey.slice(-4)}`
+                : 'PRO-ACTIVATED';
+
+              const graceDaysLeft = Math.max(0, Math.ceil((this.offlineGraceMs - elapsedSinceVerification) / (1000 * 60 * 60 * 24)));
+
+              return {
+                isPro: true,
+                isTrial: false,
+                isExpired: false,
+                plan: 'Commercial Pro Lifetime',
+                statusLabel: 'PRO ACTIVATED',
+                licenseKeyMasked: masked,
+                activatedAt: data.activatedAt || new Date().toISOString(),
+                machineId: this.machineId,
+                type: 'Gumroad Commercial License',
+                customerEmail: data.email || 'Gumroad Customer',
+                graceDaysLeft,
+                message: '8002CleanUp Pro is fully licensed via Gumroad.'
+              };
+            }
           }
         }
       }
@@ -249,17 +414,15 @@ class LicenseManager {
 
     const key = rawKey.trim();
 
-    // 1. Check Asymmetric Offline Key First (Ed25519 signature)
+    // 1. Check Server-Signed Asymmetric Offline Key (Ed25519 signature)
     const offlineCheck = verifyOfflineKey(key, this.publicKey);
     if (offlineCheck.valid) {
       const payload = {
+        type: 'offline_ed25519',
         licenseKey: key,
-        isGumroad: false,
-        verified: true,
         email: email.trim() || offlineCheck.email || 'Offline Activation',
         activatedAt: new Date().toISOString(),
-        machineId: this.machineId,
-        checksum: crypto.createHash('sha256').update(key + this.machineId).digest('hex')
+        machineId: this.machineId
       };
       fs.writeFileSync(this.licenseFile, JSON.stringify(payload, null, 2), 'utf8');
       return {
@@ -269,23 +432,37 @@ class LicenseManager {
       };
     }
 
-    // 2. Check Gumroad Online API
-    const gumroadRes = await verifyGumroadApi(key);
+    // 2. Check Gumroad Online API (first activation: increment_uses_count = true)
+    const gumroadRes = await verifyGumroadApi(key, { productId: this.productId, incrementUsesCount: true });
     if (gumroadRes.success) {
+      const verifiedAt = Date.now();
+      const purchaseId = gumroadRes.purchase?.id || '';
+      const customerEmail = email.trim() || gumroadRes.purchase?.email || 'Gumroad Customer';
+
+      const entitlementHmac = this._signEntitlement([
+        key,
+        this.productId,
+        purchaseId,
+        customerEmail,
+        String(verifiedAt),
+        this.machineId
+      ]);
+
       const payload = {
+        type: 'gumroad',
         licenseKey: key,
-        isGumroad: true,
-        verified: true,
-        email: email.trim() || gumroadRes.purchase?.email || 'Gumroad Customer',
+        productId: this.productId,
+        purchaseId,
+        email: customerEmail,
         activatedAt: new Date().toISOString(),
+        verifiedAt,
         machineId: this.machineId,
-        uses: gumroadRes.uses,
+        entitlementHmac,
         purchaseDetails: {
           productName: gumroadRes.purchase?.product_name || '8002CleanUp Pro Windows',
           price: gumroadRes.purchase?.price || 0,
           currency: gumroadRes.purchase?.currency || 'usd'
-        },
-        checksum: crypto.createHash('sha256').update(key + this.machineId).digest('hex')
+        }
       };
       fs.writeFileSync(this.licenseFile, JSON.stringify(payload, null, 2), 'utf8');
       return {
@@ -324,6 +501,9 @@ class LicenseManager {
 module.exports = {
   LicenseManager,
   verifyOfflineKey,
+  verifyGumroadApi,
   getMachineFingerprint,
-  VENDOR_PUBLIC_KEY
+  VENDOR_PUBLIC_KEY,
+  DEFAULT_GUMROAD_PRODUCT_ID,
+  OFFLINE_GRACE_MS
 };

@@ -1,4 +1,4 @@
-# 8002CleanUp Pro v2.5.0 — Release Notes
+# 8002CleanUp Pro v2.5.1 — Commercial Security Release Notes
 
 **Release Date:** November 9, 2026  
 **Target Operating Systems:** Windows 10 & Windows 11 (64-bit / x64)  
@@ -6,38 +6,34 @@
 
 ---
 
-## 🌟 Highlights of Version 2.5.0
+## 🌟 Security & Integrity Corrections in Version 2.5.1
 
-Version 2.5.0 represents a major milestone for **8002CleanUp Pro**, delivering an audited, production-grade native Windows application designed for commercial distribution. This release hardens system cleaning safety, introduces asymmetric cryptographic licensing, adds automatic network configuration backups with one-click rollback, refines the dark/light UI for high-DPI scaling, and delivers both standard Windows Setup and Portable editions.
+Version 2.5.1 delivers critical security enhancements and hardening across commercial licensing, telemetry truthfulness, and Windows filesystem safety:
 
----
+### 1. License File Anti-Tampering & Entitlement HMAC
+- **Eliminated Editable Flags:** Completely removed reliance on local boolean flags (`isGumroad`, `verified`). Local JSON edits cannot grant Pro status.
+- **Cryptographic Machine-Bound Entitlements:** Gumroad cached tokens are protected by a machine-secret HMAC (`entitlementHmac`). Any manual alteration invalidates the license instantly.
+- **Asymmetric Offline Verification:** Offline keys and receipts (`8002-PRO.<payload>.<sig>`) are cryptographically verified against the embedded Ed25519 vendor public key on every status check.
 
-## 🛡️ Key Features & Improvements
+### 2. Gumroad API Architecture Hardening
+- **Product ID Migration:** Updated license verification endpoint to use `product_id` (`8002cleanup-pro-windows`).
+- **Fraud & Refund Prevention:** Explicitly checks and rejects refunded, disputed, chargebacked, and cancelled purchases.
+- **Activation Count Protection:** `increment_uses_count` is set to `true` strictly during initial activation, and `false` during background re-verifications.
+- **14-Day Offline Grace Period:** Allows 14 days of offline operation with background revocation checks when internet connectivity is present.
 
-### 1. Robust SafetyGuard & Canonical Path Allowlists
-- **Anti-Traversal Protection:** Strict canonical path validation (`isSafeCleanTarget`) ensures cleaning operations cannot delete system-critical roots (`C:\Windows`, `C:\Program Files`, `C:\Windows\System32`, `UserProfiles`, etc.).
-- **Windows Core Process Guard:** `isCriticalProcess` blocks accidental termination of essential operating system services (`csrss.exe`, `lsass.exe`, `services.exe`, `explorer.exe`, `smss.exe`, `svchost.exe`, and Windows Defender).
-- **Preview-First Architecture:** Potentially destructive operations display preview item counts and byte sizes with user confirmation before executing.
-- **PowerShell Argument Sanitization:** Safe array-based parameter passing replaces raw interpolated command strings.
+### 3. Privileged Main-Process IPC Enforcement
+- **Comprehensive License Auditing:** Privileged cleanup actions (`clean-items`, `clean-browser-data`, `empty-recycle-bin`, `clean-registry`, `shred-file`, `optimize-ram`, and `apply-dns`) evaluate license state directly in the Electron main process via `isProOrActiveTrial()`. Tampering with React state in DevTools cannot bypass Pro requirements.
+- **Free Feature Preservation:** Dry-run preview scans, system telemetry, activity monitoring, registry backups, network restores, and ScamAdviser trust checks remain 100% free and fully functional.
 
-### 2. Commercial Gumroad & Offline Asymmetric Licensing
-- **Asymmetric Ed25519 Offline Verification:** Client verifies genuine cryptographically signed licenses using an embedded vendor public key. Private keys are never embedded in client binaries or repositories.
-- **Gumroad License Verification API:** Live verification against Gumroad's license API with secure local token caching.
-- **Fair 7-Day Free Trial:** Full feature access during trial period without intrusive telemetry or always-online requirements.
-- **Renderer Tamper Resistance:** IPC backend enforces license verification directly within the Electron main process; renderer state manipulation cannot bypass Pro requirements.
-- **License Management UI:** Clickable header badge, dedicated `LicenseModal` for activation, status checks, and license deactivation/transfers.
+### 4. Hardware Telemetry Accuracy
+- **Eliminated Simulated Metrics:** Removed synthetic formulas for battery temperature and wattage.
+- **Genuine Hardware Queries:** Battery charge, charging state, and health are retrieved directly via WMI/CIM. When hardware sensors are not exposed by the operating system, values are accurately presented as "Not available".
+- **Instantaneous Delta CPU Calculation:** Replaced cumulative lifetime CPU tick math with real instantaneous delta sampling across CPU intervals.
 
-### 3. Network Shield & Reversible DNS/Hosts Configuration
-- **Automatic Configuration Backups:** Saves original DNS adapter configurations (`dns_state.json`) and hosts file (`hosts.original.bak`) before applying any modifications.
-- **One-Click Network Restore:** Added "Restore Network Backup" feature allowing users to instantly roll back DNS and hosts changes to their previous states.
-- **Idempotent Hosts Sinkhole:** Managed block markers (`# --- 8002CleanUp Pro Hosts Shield Start ---`) prevent configuration bloat and duplication.
-- **Accurate Branding:** Replaced third-party trademarks with transparent descriptions ("Privacy & Network Shield with Anycast DNS and 0.0.0.0 Hosts Sinkhole").
-
-### 4. Native Windows Desktop Polish & High-DPI UI
-- **Windows 10 & 11 Design Language:** Compact, responsive layout tuned for 100%, 125%, 150%, and 200% Windows display scaling.
-- **Dark & Light Themes:** High-contrast, accessible visual themes with complete color token consistency.
-- **Real-Time Telemetry:** Activity Monitor, RAM working set optimization via `psapi.dll`, battery & thermal lifeguards displaying accurate system metrics.
-- **Electron Security Hardening:** Enforced Content Security Policy (CSP), disabled `nodeIntegration` in renderer, enabled `contextIsolation`, and restricted navigation to trusted external handlers.
+### 5. Filesystem Safety & Junction / Symlink Protection
+- **Anti-Junction Traversal:** Iterative directory traversal detects NTFS junctions, reparse points, and symlinks (`st.isSymbolicLink()`), safely unlinking the pointer without recursing into target directories.
+- **System Directory Shredding Guard:** `shred-file` explicitly blocks attempts to overwrite Windows system roots (`C:\Windows`, `C:\Program Files`).
+- **Canonical Allowlist Enforcement:** `clean-browser-data` and `clean-items` enforce strict allowlists before touching any filesystem node.
 
 ---
 
@@ -45,14 +41,7 @@ Version 2.5.0 represents a major milestone for **8002CleanUp Pro**, delivering a
 
 | File | Type | Description |
 |---|---|---|
-| `8002CleanUp-Windows-Setup-v2.5.0.exe` | NSIS Setup | Standard Windows Setup Wizard with Desktop & Start Menu shortcuts |
-| `8002CleanUp-Windows-Portable-v2.5.0.exe` | Portable EXE | Zero-install standalone executable for USB & on-the-go maintenance |
-| `8002CleanUp-Windows-v2.5.0-Gumroad.zip` | Archive | Customer distribution bundle containing both EXEs, checksums, and documentation |
+| `8002CleanUp-Windows-Setup-v2.5.1.exe` | NSIS Setup | Standard Windows Setup Wizard with Desktop & Start Menu shortcuts |
+| `8002CleanUp-Windows-Portable-v2.5.1.exe` | Portable EXE | Zero-install standalone executable for USB & on-the-go maintenance |
+| `8002CleanUp-Windows-v2.5.1-Gumroad.zip` | Archive | Commercial bundle containing EXEs, checksums, and documentation |
 | `SHA256SUMS.txt` | Checksums | Cryptographic SHA-256 verification hashes |
-
----
-
-## 🔒 Security & Dependency Verification
-
-- **Runtime Production Dependencies:** 0 vulnerabilities (`npm audit --omit=dev`).
-- **Automated Test Suites:** 100% pass rate across Asymmetric License Manager and Windows Safety Guard test suites.

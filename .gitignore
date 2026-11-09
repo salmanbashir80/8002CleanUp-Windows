@@ -7,3 +7,4 @@ release/
 *.pem
 test/vendor-private-key.pem
 scripts/vendor-private-key.pem
+downloaded_release/

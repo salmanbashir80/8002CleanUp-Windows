@@ -260,12 +260,13 @@ export default function App() {
     diskFreeBytes: 228 * 1024 * 1024 * 1024,
     diskUsedBytes: 284 * 1024 * 1024 * 1024,
     battery: {
-      percent: 91,
-      isCharging: true,
-      healthPercent: 95,
-      temperatureC: 35.6,
-      cycleCount: 108,
-      watts: 24.5
+      hasBattery: false,
+      percent: null,
+      isCharging: false,
+      healthPercent: null,
+      temperatureC: null,
+      cycleCount: null,
+      watts: null
     },
     processes: []
   });
@@ -1366,8 +1367,8 @@ export default function App() {
 
           {/* Quick Hardware Stats */}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-secondary)', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 5 }}>
-            <span>CPU: <strong style={{ color: '#fff' }}>{telemetry.cpuPercent || 14}%</strong></span>
-            <span>Temp: <strong style={{ color: '#ffbe0b' }}>{telemetry.battery?.temperatureC || 35.4}°C</strong></span>
+            <span>CPU: <strong style={{ color: '#fff' }}>{typeof telemetry.cpuPercent === 'number' ? `${telemetry.cpuPercent}%` : 'N/A'}</strong></span>
+            <span>Temp: <strong style={{ color: '#ffbe0b' }}>{telemetry.battery?.temperatureC != null ? `${telemetry.battery.temperatureC}°C` : 'N/A'}</strong></span>
             <span>Disk: <strong style={{ color: '#18e299' }}>{formatBytes(telemetry.diskFreeBytes)}</strong></span>
           </div>
 
@@ -1868,7 +1869,7 @@ export default function App() {
               {/* System Info Footnote */}
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-secondary)', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 10 }}>
                 <span>Windows Uptime: {Math.floor(telemetry.uptimeSeconds / 3600)}h {Math.floor((telemetry.uptimeSeconds % 3600) / 60)}m</span>
-                <span>Active Host: {telemetry.hostname} • Battery Health: {telemetry.battery.healthPercent}%</span>
+                <span>Active Host: {telemetry.hostname} • Battery: {telemetry.battery?.hasBattery && telemetry.battery.healthPercent != null ? `${telemetry.battery.healthPercent}% Health` : 'AC Power'}</span>
               </div>
             </div>
 
@@ -1923,14 +1924,18 @@ export default function App() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <BatteryCharging size={24} color="#ffbe0b" />
                   <span className="metric-pill" style={{ color: '#ffbe0b' }}>
-                    {telemetry.battery.isCharging ? 'AC Power' : 'Battery'}
+                    {telemetry.battery?.hasBattery ? (telemetry.battery.isCharging ? 'AC (Charging)' : 'On Battery') : 'AC Power'}
                   </span>
                 </div>
                 <div style={{ fontSize: 20, fontWeight: 600, color: '#ffbe0b', marginTop: 12 }}>
-                  {telemetry.battery.percent}% • {telemetry.battery.temperatureC}°C
+                  {telemetry.battery?.hasBattery && telemetry.battery.percent != null
+                    ? `${telemetry.battery.percent}%${telemetry.battery.temperatureC != null ? ` • ${telemetry.battery.temperatureC}°C` : ''}`
+                    : 'Desktop (AC)'}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
-                  Health {telemetry.battery.healthPercent}% • {telemetry.battery.cycleCount} Cycles
+                  {telemetry.battery?.hasBattery
+                    ? `Health: ${telemetry.battery.healthPercent != null ? `${telemetry.battery.healthPercent}%` : 'Not available'}`
+                    : 'No internal battery'}
                 </div>
               </div>
 
@@ -3803,24 +3808,32 @@ export default function App() {
               <div className="glass-card" style={{ padding: 22 }}>
                 <BatteryCharging size={32} color="#18e299" />
                 <div style={{ fontSize: 28, fontWeight: 600, marginTop: 10, color: '#18e299' }}>
-                  {telemetry.battery.percent}%
+                  {telemetry.battery?.hasBattery && telemetry.battery.percent != null
+                    ? `${telemetry.battery.percent}%`
+                    : 'AC Powered'}
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 700, marginTop: 4 }}>
-                  {telemetry.battery.isCharging ? 'AC Adapter Connected (Charging)' : 'Discharging on Battery'}
+                  {telemetry.battery?.hasBattery
+                    ? (telemetry.battery.isCharging ? 'AC Adapter Connected (Charging)' : 'Discharging on Battery')
+                    : 'Desktop / Workstation (No Battery)'}
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 4 }}>
-                  Health: {telemetry.battery.healthPercent}% • Cycle Count: {telemetry.battery.cycleCount}
+                  {telemetry.battery?.hasBattery
+                    ? `Health: ${telemetry.battery.healthPercent != null ? `${telemetry.battery.healthPercent}%` : 'Not available'}${telemetry.battery.cycleCount != null ? ` • Cycles: ${telemetry.battery.cycleCount}` : ''}`
+                    : 'Standard Continuous Power Supply'}
                 </div>
               </div>
 
               <div className="glass-card" style={{ padding: 22 }}>
                 <Flame size={32} color="#ff6b4a" />
                 <div style={{ fontSize: 28, fontWeight: 600, marginTop: 10, color: '#ff6b4a' }}>
-                  {telemetry.battery.temperatureC}°C
+                  {telemetry.battery?.temperatureC != null ? `${telemetry.battery.temperatureC}°C` : 'N/A'}
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 700, marginTop: 4 }}>MSAcpi Thermal Zone</div>
                 <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 4 }}>
-                  Operating within safe temperature range
+                  {telemetry.battery?.temperatureC != null
+                    ? 'Operating within safe temperature limits'
+                    : 'Sensor not exposed by hardware (requires OEM driver)'}
                 </div>
               </div>
 

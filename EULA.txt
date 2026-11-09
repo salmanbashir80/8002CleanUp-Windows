@@ -1,6 +1,6 @@
 8002CLEANUP PRO — END USER LICENSE AGREEMENT (EULA)
 =====================================================
-Version 2.5.0 — Commercial Windows Edition
+Version 2.5.1 — Commercial Windows Edition
 Copyright (c) 2026 Salman Bashir / 8002. All Rights Reserved.
 
 IMPORTANT: PLEASE READ THIS END USER LICENSE AGREEMENT ("AGREEMENT") CAREFULLY

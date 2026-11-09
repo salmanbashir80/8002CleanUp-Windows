@@ -8,13 +8,13 @@ Welcome to **8002CleanUp Pro for Windows 10 & 11**.
 
 You can choose between two executables depending on your workflow:
 
-1. **Setup Installer (`8002CleanUp-Windows-Setup-v2.5.0.exe`)**
+1. **Setup Installer (`8002CleanUp-Windows-Setup-v2.5.1.exe`)**
    - Standard Windows setup wizard
    - Adds shortcuts to Desktop and Start Menu
    - Registers Clean uninstaller in Windows Settings -> Installed Apps
    - Recommended for daily primary PC usage
 
-2. **Portable Edition (`8002CleanUp-Windows-Portable-v2.5.0.exe`)**
+2. **Portable Edition (`8002CleanUp-Windows-Portable-v2.5.1.exe`)**
    - Single-file executable with zero installation
    - Run directly from any folder, USB thumb drive, or external storage
    - Leaves no permanent installer registry footprints
@@ -25,14 +25,14 @@ You can choose between two executables depending on your workflow:
 ## 🚀 How to Install and Launch
 
 ### Using the Setup Installer:
-1. Download `8002CleanUp-Windows-Setup-v2.5.0.exe`.
+1. Download `8002CleanUp-Windows-Setup-v2.5.1.exe`.
 2. Double-click the installer.
 3. Select your preferred installation destination folder (default: `C:\Users\<YourUser>\AppData\Local\Programs\8002CleanUp Pro`).
 4. Follow the setup wizard to complete the installation.
 5. Launch **8002CleanUp Pro** from your Desktop shortcut or Start Menu.
 
 ### Using the Portable Edition:
-1. Download `8002CleanUp-Windows-Portable-v2.5.0.exe`.
+1. Download `8002CleanUp-Windows-Portable-v2.5.1.exe`.
 2. Move it to your preferred folder (or USB drive).
 3. Double-click to launch immediately.
 

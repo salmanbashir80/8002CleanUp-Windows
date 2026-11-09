@@ -504,14 +504,46 @@ function getDirectoryStats(dirPath, maxDepth = 4, currentDepth = 0) {
   return { totalBytes, fileCount, sampleItems };
 }
 
+// Commercial Licensing Verification Helper
+function isProOrActiveTrial() {
+  const lic = licenseManager.getStatus();
+  return Boolean(lic.isPro && !lic.isExpired);
+}
+
 // IPC 1: High-Performance Real System Telemetry (Windows 10/11 + macOS Live Preview)
+let prevCpuTimes = null;
+let lastCpuPercent = 0;
+
+function calculateRealCpuPercent() {
+  const cpus = os.cpus();
+  if (!cpus || cpus.length === 0) return 0;
+  let idle = 0;
+  let total = 0;
+  for (const c of cpus) {
+    for (const type of Object.keys(c.times)) total += c.times[type];
+    idle += c.times.idle;
+  }
+  if (!prevCpuTimes) {
+    prevCpuTimes = { idle, total };
+    return 0;
+  }
+  const idleDelta = idle - prevCpuTimes.idle;
+  const totalDelta = total - prevCpuTimes.total;
+  prevCpuTimes = { idle, total };
+  if (totalDelta <= 0) return lastCpuPercent;
+  const usage = Math.max(0, Math.min(100, Math.round(100 - (idleDelta / totalDelta) * 100)));
+  lastCpuPercent = usage;
+  return usage;
+}
+
 let cachedBattery = {
-  percent: 100,
-  isCharging: true,
-  healthPercent: 98,
-  temperatureC: 36.2,
-  cycleCount: 108,
-  watts: 0
+  hasBattery: false,
+  percent: null,
+  isCharging: false,
+  healthPercent: null,
+  temperatureC: null,
+  cycleCount: null,
+  watts: null
 };
 let hasCheckedBattery = false;
 let batteryHasHardware = true;
@@ -527,16 +559,7 @@ ipcMain.handle('get-system-telemetry', async (_event, options = {}) => {
   const freeMem = os.freemem();
   const usedMem = Math.max(0, totalMem - freeMem);
   const cpus = os.cpus();
-  let cpuPercent = 14;
-  if (cpus && cpus.length > 0) {
-    let idle = 0;
-    let total = 0;
-    for (const c of cpus) {
-      for (const type of Object.keys(c.times)) total += c.times[type];
-      idle += c.times.idle;
-    }
-    cpuPercent = Math.max(3, Math.min(99, Math.round(100 - (idle / Math.max(1, total)) * 100)));
-  }
+  const cpuPercent = calculateRealCpuPercent();
 
   // Disk stats
   let diskTotal = 512 * 1024 * 1024 * 1024;
@@ -552,28 +575,53 @@ ipcMain.handle('get-system-telemetry', async (_event, options = {}) => {
 
   const now = Date.now();
 
-  // Async non-blocking Battery check: only once every 90 seconds, and if no hardware, never re-query
-  if (isWin && batteryHasHardware && (now - lastBatteryCheckTime > 90000 || !hasCheckedBattery)) {
+  // Async non-blocking Battery & Thermal check: query real OS readings
+  if (isWin && batteryHasHardware && (now - lastBatteryCheckTime > 60000 || !hasCheckedBattery)) {
     hasCheckedBattery = true;
     lastBatteryCheckTime = now;
-    execAsync('powershell -NoProfile -Command "Get-CimInstance Win32_Battery | Select-Object EstimatedChargeRemaining,BatteryStatus | ConvertTo-Json"', 3000)
+    execAsync('powershell -NoProfile -Command "try { $b = Get-CimInstance Win32_Battery -ErrorAction Stop | Select-Object EstimatedChargeRemaining,BatteryStatus,DesignCapacity,FullChargeCapacity; $t = Get-CimInstance -Namespace root/wmi -ClassName MSAcpi_ThermalZoneTemperature -ErrorAction SilentlyContinue | Select-Object -First 1 CurrentTemperature; @{ hasBattery = $true; battery = $b; thermal = $t } | ConvertTo-Json -Compress } catch { @{ hasBattery = $false } | ConvertTo-Json -Compress }"', 4000)
       .then((batRes) => {
         if (batRes.stdout && batRes.stdout.trim()) {
           try {
             const parsed = JSON.parse(batRes.stdout.trim());
-            const b = Array.isArray(parsed) ? parsed[0] : parsed;
-            if (b && typeof b.EstimatedChargeRemaining === 'number') {
-              cachedBattery.percent = b.EstimatedChargeRemaining;
-              cachedBattery.isCharging = b.BatteryStatus === 2 || b.BatteryStatus === 6;
+            if (parsed && parsed.hasBattery && parsed.battery) {
+              const b = Array.isArray(parsed.battery) ? parsed.battery[0] : parsed.battery;
+              cachedBattery.hasBattery = true;
+              cachedBattery.percent = typeof b.EstimatedChargeRemaining === 'number' ? b.EstimatedChargeRemaining : null;
+              cachedBattery.isCharging = b.BatteryStatus === 2 || b.BatteryStatus === 6 || b.BatteryStatus === 7;
+              if (b.DesignCapacity && b.FullChargeCapacity && b.DesignCapacity > 0) {
+                cachedBattery.healthPercent = Math.min(100, Math.round((b.FullChargeCapacity / b.DesignCapacity) * 100));
+              } else {
+                cachedBattery.healthPercent = null;
+              }
+            } else {
+              cachedBattery.hasBattery = false;
+              cachedBattery.percent = null;
+              cachedBattery.isCharging = false;
+              cachedBattery.healthPercent = null;
+            }
+
+            // Real thermal zone reading if exposed by ACPI hardware
+            if (parsed && parsed.thermal && typeof parsed.thermal.CurrentTemperature === 'number') {
+              const k10 = parsed.thermal.CurrentTemperature;
+              // Kelvin tenths: (K - 2732)/10 = Celsius
+              if (k10 > 2732 && k10 < 3932) {
+                cachedBattery.temperatureC = Number(((k10 - 2732) / 10).toFixed(1));
+              } else {
+                cachedBattery.temperatureC = null;
+              }
+            } else {
+              cachedBattery.temperatureC = null;
             }
           } catch (_) {}
         } else {
-          // Desktop PC with no physical battery - disable further queries
           batteryHasHardware = false;
+          cachedBattery.hasBattery = false;
         }
       })
       .catch(() => {
         batteryHasHardware = false;
+        cachedBattery.hasBattery = false;
       });
   }
 
@@ -613,9 +661,6 @@ ipcMain.handle('get-system-telemetry', async (_event, options = {}) => {
     }
   }
 
-  // Dynamic temperature estimate tied directly to CPU load (keeps CPU at 0% while giving accurate thermal telemetry)
-  const dynamicTemp = Number((34.0 + (cpuPercent * 0.14)).toFixed(1));
-
   return {
     platform: isWin ? 'Windows 10 / 11 (x64)' : `macOS Live Preview (${os.arch()})`,
     hostname: os.hostname(),
@@ -630,9 +675,7 @@ ipcMain.handle('get-system-telemetry', async (_event, options = {}) => {
     diskFreeBytes: diskFree,
     diskUsedBytes: Math.max(0, diskTotal - diskFree),
     battery: {
-      ...cachedBattery,
-      temperatureC: dynamicTemp,
-      watts: cachedBattery.isCharging ? 28.4 : 11.6
+      ...cachedBattery
     },
     processes: cachedProcesses.slice(0, 12)
   };
@@ -818,9 +861,23 @@ async function purgeDirectoryContentsAsync(dirPath, onProgress) {
         try {
           const st = await fs.promises.lstat(full).catch(() => null);
           if (!st) continue;
+
+          // Junction / Symlink Protection: NEVER traverse into reparse points or symlinks!
+          if (st.isSymbolicLink()) {
+            try {
+              // Delete the link itself only, never follow or recurse into it
+              await fs.promises.unlink(full).catch(() => fs.promises.rmdir(full));
+              count += 1;
+            } catch (_) {}
+            continue;
+          }
+
           if (st.isDirectory()) {
-            queue.push(full);
-            dirsToDelete.push(full);
+            // Re-validate that the subdirectory is within an approved safe cleanup zone before queueing
+            if (isSafeCleanTarget(full)) {
+              queue.push(full);
+              dirsToDelete.push(full);
+            }
           } else {
             const sz = st.size || 0;
             try {
@@ -860,8 +917,7 @@ async function purgeDirectoryContentsAsync(dirPath, onProgress) {
 
 // IPC 4: Clean Selected Items (Non-Blocking Native Cleaner)
 ipcMain.handle('clean-items', async (event, { paths, dryRun }) => {
-  const lic = licenseManager.getStatus();
-  if (!dryRun && !lic.isPro && lic.isExpired) {
+  if (!dryRun && !isProOrActiveTrial()) {
     return {
       cleanedCount: 0,
       freedBytes: 0,
@@ -971,6 +1027,14 @@ ipcMain.handle('clean-items', async (event, { paths, dryRun }) => {
 
 // IPC 5: Real WorkingSet RAM Optimizer (via Windows psapi.dll EmptyWorkingSet)
 ipcMain.handle('optimize-ram', async () => {
+  if (!isProOrActiveTrial()) {
+    return {
+      processesCleaned: 0,
+      freedMB: 0,
+      freedBytes: 0,
+      message: 'License Required: 7-day evaluation trial expired. Please activate 8002CleanUp Pro with a Gumroad license key.'
+    };
+  }
   const beforeFree = os.freemem();
   if (process.platform === 'win32') {
     const script = `
@@ -1337,6 +1401,13 @@ ipcMain.handle('verify-dns-sinkhole', async () => {
 
 // IPC 8: Apply DNS on Windows 10/11 with Real UAC Administrator Elevation & Verification
 ipcMain.handle('apply-dns', async (_event, { provider }) => {
+  if (!isProOrActiveTrial()) {
+    return {
+      ok: false,
+      verified: false,
+      message: 'License Required: 7-day evaluation trial expired. Please activate 8002CleanUp Pro with a Gumroad license key.'
+    };
+  }
   const dnsServers = {
     'AdGuard DNS': ['94.140.14.14', '94.140.15.15'],
     'AdGuard DNS Family Protection': ['94.140.14.15', '94.140.15.16'],
@@ -2181,6 +2252,13 @@ ipcMain.handle('delete-registry-backup', async (_event, { backupPath }) => {
 
 // Windows Registry Cleaner: High-Performance Batch Clean Selected Orphaned Values or Keys
 ipcMain.handle('clean-registry', async (_event, { issues }) => {
+  if (!isProOrActiveTrial()) {
+    return {
+      success: false,
+      cleanedCount: 0,
+      message: 'License Required: 7-day evaluation trial expired. Please activate 8002CleanUp Pro with a Gumroad license key.'
+    };
+  }
   const list = Array.isArray(issues) ? issues : [];
   if (list.length === 0) {
     return { success: true, cleanedCount: 0, message: 'No items selected to clean.' };
@@ -3095,8 +3173,21 @@ ipcMain.handle('select-file-for-shred', async () => {
 
 // DoD 5220.22-M File Shredder: 3-Pass Overwrite & Erase
 ipcMain.handle('shred-file', async (_event, { filePath }) => {
+  if (!isProOrActiveTrial()) {
+    return {
+      success: false,
+      message: 'License Required: 7-day evaluation trial expired. Please activate 8002CleanUp Pro with a Gumroad license key.'
+    };
+  }
   if (!filePath || !fs.existsSync(filePath)) {
     return { success: false, message: 'Target file not found.' };
+  }
+  const norm = filePath.toLowerCase().replace(/\//g, '\\');
+  if (norm.startsWith('c:\\windows') || norm.startsWith('c:\\program files') || norm.startsWith('c:\\program files (x86)')) {
+    return {
+      success: false,
+      message: 'Safety Guard Blocked: Cannot shred system-protected Windows files.'
+    };
   }
   try {
     const size = fs.statSync(filePath).size;
@@ -3174,6 +3265,12 @@ ipcMain.handle('quit-app', async () => {
 });
 
 ipcMain.handle('empty-recycle-bin', async () => {
+  if (!isProOrActiveTrial()) {
+    return {
+      success: false,
+      message: 'License Required: 7-day evaluation trial expired. Please activate 8002CleanUp Pro with a Gumroad license key.'
+    };
+  }
   if (process.platform === 'win32') {
     await execAsync('powershell -NoProfile -Command "Clear-RecycleBin -Force -ErrorAction SilentlyContinue"', 8000);
   }
@@ -3663,6 +3760,15 @@ ipcMain.handle('close-browser-process', async (_event, { processName }) => {
 });
 
 ipcMain.handle('clean-browser-data', async (event, { items, closeBrowsers }) => {
+  if (!isProOrActiveTrial()) {
+    return {
+      ok: false,
+      cleanedCount: 0,
+      freedBytes: 0,
+      freedMB: '0.0',
+      message: 'License Required: 7-day evaluation trial expired. Please activate 8002CleanUp Pro with a Gumroad license key.'
+    };
+  }
   const itemList = Array.isArray(items) ? items : [];
 
   if (closeBrowsers) {
@@ -3684,6 +3790,7 @@ ipcMain.handle('clean-browser-data', async (event, { items, closeBrowsers }) => 
   for (const item of itemList) {
     const paths = Array.isArray(item.paths) ? item.paths : [];
     for (const p of paths) {
+      if (!isSafeCleanTarget(p)) continue;
       try {
         if (!fs.existsSync(p)) continue;
         const st = await fs.promises.lstat(p).catch(() => null);
