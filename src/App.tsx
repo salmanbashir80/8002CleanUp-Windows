@@ -67,6 +67,7 @@ import { BrowserCleaner } from './components/BrowserCleaner';
 import { NotificationPanelPopover } from './components/NotificationPanelPopover';
 import { LicenseModal } from './components/LicenseModal';
 import { UpdateModal, UpdateInfo } from './components/UpdateModal';
+import { SettingsModal } from './components/SettingsModal';
 
 declare global {
   interface Window {
@@ -250,6 +251,7 @@ export default function App() {
   // Customer Update System State & Background Notification Handlers
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [showUpdateModal, setShowUpdateModal] = useState<boolean>(false);
+  const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
   const [isUpdateBannerDismissed, setIsUpdateBannerDismissed] = useState<boolean>(false);
 
   const handleCheckForUpdates = async () => {
@@ -1479,8 +1481,14 @@ export default function App() {
             border: '1px solid rgba(255,255,255,0.12)'
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 6 }}>
-            <span style={{ color: 'var(--text-secondary)' }}>v2.5.4 Pro</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10.5, marginBottom: 6 }}>
+            <span
+              onClick={() => setShowSettingsModal(true)}
+              style={{ color: 'var(--text-secondary)', cursor: 'pointer', textDecoration: 'underline' }}
+              title="Open Settings & Updates"
+            >
+              v2.5.4 Pro
+            </span>
             <span style={{ color: '#18e299', fontWeight: 600 }}>● Live Engine</span>
           </div>
           <button
@@ -1732,6 +1740,22 @@ export default function App() {
                     }}
                   />
                 )}
+              </button>
+
+              <button
+                className="btn-secondary"
+                onClick={() => setShowSettingsModal(true)}
+                title="Application Settings & Updates"
+                style={{
+                  padding: '5px 9px',
+                  fontSize: 11,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5
+                }}
+              >
+                <Sliders size={12} color="#00e5ff" />
+                <span className="hide-on-compact">Settings</span>
               </button>
 
               <button
@@ -4332,6 +4356,19 @@ export default function App() {
         onClose={() => setShowUpdateModal(false)}
         updateInfo={updateInfo}
         onCheckAgain={handleCheckForUpdates}
+      />
+
+      {/* MODAL 5: SETTINGS & CLOUD UPDATES */}
+      <SettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        currentVersion={licenseStatus?.version || '2.5.4'}
+        updateInfo={updateInfo}
+        onCheckUpdates={handleCheckForUpdates}
+        licenseStatus={licenseStatus}
+        onOpenLicense={() => setShowLicenseModal(true)}
+        dryRun={dryRun}
+        onToggleDryRun={() => setDryRun(!dryRun)}
       />
     </div>
   );

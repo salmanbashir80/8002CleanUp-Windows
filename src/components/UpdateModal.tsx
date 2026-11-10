@@ -459,23 +459,11 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
             background: 'rgba(0, 0, 0, 0.2)'
           }}
         >
-          {updateInfo?.htmlUrl ? (
-            <button
-              onClick={() => (window as any).electronAPI?.openExternal?.(updateInfo.htmlUrl)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'rgba(255, 255, 255, 0.6)',
-                fontSize: 11.5,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                cursor: 'pointer'
-              }}
-            >
-              <span>View GitHub Release Notes</span>
-              <ExternalLink size={12} />
-            </button>
+          {updateInfo ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'rgba(255, 255, 255, 0.6)' }}>
+              <ShieldCheck size={14} color="#00e5ff" />
+              <span>Official 8002 Cloud Delivery · Verified & Encrypted</span>
+            </div>
           ) : (
             <div />
           )}
