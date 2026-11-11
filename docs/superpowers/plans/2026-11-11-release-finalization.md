@@ -33,3 +33,13 @@
 - [ ] Build and run Swift tests on macos-15, fixing actual failures without weakening security checks.
 - [ ] Review Gumroad/Keychain/offline/revocation and Sparkle path; request real product ID, never guess.
 - [ ] Commit on feature branch, rebase/push and write evidence report with all untested gates.
+
+## Publication-readiness continuation
+
+Owner requests both platforms prepared as website-upload ZIPs; releases stay draft.
+- [ ] Upgrade vulnerable Windows Electron/build dependencies to patched stable versions; preserve app identity and userData paths. Convert Vite config to ESM if required.
+- [ ] Require a clean full dependency audit and rerun quality tests/native builds and Defender.
+- [ ] Add native launch/Settings/restart smoke evidence on an isolated Windows runner. Keep paid-license upgrade/QA-PC acceptance distinct from trial smoke tests.
+- [ ] Remediate macOS embedded master/keygen licensing with native Gumroad + Keychain and signed-receipt support, requiring the real owner Product ID rather than a guessed value. Preserve cleanup safety and customer storage.
+- [ ] Resolve actual macOS native build/test access; no source archive is a substitute for a compiled app ZIP.
+- [ ] Generate platform ZIPs with checksums and honest signing/notarization/readiness results; never publish or edit listings.

@@ -4,6 +4,8 @@
 **Platforms:** Windows 10 and 11, x64
 **Status:** DRAFT — not published; native upgrade acceptance is pending.
 
+- Updated Electron, electron-builder, Vite and the React build plugin to patched versions; the full dependency audit is enforced in CI.
+- Native Windows CI now exercises Settings, saved auto-check preferences, app restart and OS-backed encryption with synthetic QA data. This does not claim paid-license upgrade acceptance.
 - Settings includes software updates, license management, Safe Preview and About.
 - Automatic update checks use the saved preference (3 seconds after launch, then every 4 hours).
 - Update detection ignores draft and prerelease candidates, including manual checks.

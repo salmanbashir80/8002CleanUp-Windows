@@ -22,10 +22,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Install Dependencies
         run: npm ci
+
+      - name: Audit Dependencies
+        run: npm audit --audit-level=moderate
 
       - name: Run Quality, Safety & Unit Tests
         run: npm run check
@@ -34,6 +37,9 @@ jobs:
         run: npm run dist:win -- --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Native Application Settings and Restart Smoke
+        run: node test/nativeWindowsSmoke.cjs
 
       - name: Verify Architecture and Binary Metadata
         shell: pwsh
@@ -97,6 +103,8 @@ jobs:
             release/BINARY_METADATA.json
             release/DEFENDER_SCAN.json
             release/GUMROAD_CONTENTS.txt
+            release/NATIVE_SMOKE.json
+            release/NATIVE_SETTINGS.png
 
       - name: Prepare Draft Release Notes
         if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/audit-finalization'
@@ -124,6 +132,8 @@ jobs:
             release/BINARY_METADATA.json
             release/DEFENDER_SCAN.json
             release/GUMROAD_CONTENTS.txt
+            release/NATIVE_SMOKE.json
+            release/NATIVE_SETTINGS.png
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

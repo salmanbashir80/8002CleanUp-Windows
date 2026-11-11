@@ -28,11 +28,12 @@ const rowStyle: React.CSSProperties = {
   fontSize: 12.5
 };
 
-const Toggle: React.FC<{ checked: boolean; onChange: (v: boolean) => void }> = ({ checked, onChange }) => (
+const Toggle: React.FC<{ label: string; checked: boolean; onChange: (v: boolean) => void }> = ({ label, checked, onChange }) => (
   <button
     onClick={() => onChange(!checked)}
     role="switch"
     aria-checked={checked}
+    aria-label={label}
     style={{
       width: 42,
       height: 22,
@@ -124,7 +125,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         </div>
         <div style={rowStyle}>
           <span>Automatically check for updates on launch and every 4 hours</span>
-          <Toggle checked={settings.autoCheckUpdates} onChange={(v) => updateSetting({ autoCheckUpdates: v })} />
+          <Toggle label="Automatically check for updates" checked={settings.autoCheckUpdates} onChange={(v) => updateSetting({ autoCheckUpdates: v })} />
         </div>
         {updateInfo?.updateAvailable && (
           <div
@@ -204,7 +205,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         </div>
         <div style={rowStyle}>
           <span>Safe Preview mode (scan and report only, nothing is deleted)</span>
-          <Toggle checked={dryRun} onChange={() => onToggleDryRun()} />
+          <Toggle label="Safe Preview mode" checked={dryRun} onChange={() => onToggleDryRun()} />
         </div>
       </div>
 
