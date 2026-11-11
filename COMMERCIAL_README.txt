@@ -61,3 +61,7 @@ If you need assistance, have feedback, or want to transfer your license:
 Email: salmanbashir80@github.com
 Website: https://github.com/salmanbashir80/8002CleanUp-Windows
 ========================================================================
+
+SYSTEM-WIDE ACTIONS
+Start normally for scans and user data. For DNS/registry/system-wide changes,
+right-click the app and select Run as administrator. Keep Windows UAC enabled.

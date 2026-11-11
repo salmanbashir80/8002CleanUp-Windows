@@ -4,6 +4,7 @@
 **Platforms:** Windows 10 and 11, x64
 **Status:** DRAFT — not published; native upgrade acceptance is pending.
 
+- The main executable uses the standard Windows permission manifest so Chromium sandboxed child processes can launch. System-wide actions remain available via Run as administrator.
 - Updated Electron, electron-builder, Vite and the React build plugin to patched versions; the full dependency audit is enforced in CI.
 - Native Windows CI now exercises Settings, saved auto-check preferences, app restart and OS-backed encryption with synthetic QA data. This does not claim paid-license upgrade acceptance.
 - Settings includes software updates, license management, Safe Preview and About.

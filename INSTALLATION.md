@@ -63,3 +63,7 @@ To cleanly uninstall:
 1. Open Windows **Settings** (`Win + I`) -> **Apps** -> **Installed Apps**.
 2. Locate **8002CleanUp Pro**.
 3. Click **Uninstall** and confirm.
+
+## Administrator actions
+
+The app starts with your normal Windows permissions. For system-wide DNS, registry or other administrator-only actions, right-click the app and choose **Run as administrator**. This preserves Windows UAC and allows Chromium sandboxed child processes to launch correctly. Ordinary scans and user-cache operations do not require blanket elevation.

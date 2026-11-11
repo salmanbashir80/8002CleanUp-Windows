@@ -43,7 +43,7 @@
         }
       ],
       "icon": "build/icon.ico",
-      "requestedExecutionLevel": "requireAdministrator"
+      "requestedExecutionLevel": "asInvoker"
     },
     "nsis": {
       "oneClick": false,
