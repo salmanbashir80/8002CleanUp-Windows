@@ -16,6 +16,8 @@ const { _electron: electron } = require('playwright-core');
   try {
     for (const restart of [false, true]) {
       instance = await electron.launch({ executablePath, timeout: 60000 });
+      instance.process().stderr?.on('data', data => process.stderr.write(data));
+      instance.process().on('exit', (code, signal) => console.log(`Native app exit: code=${code}, signal=${signal}`));
       const page = await instance.firstWindow();
       await page.waitForFunction(() => Boolean(window.electronAPI?.getAppInfo), { timeout: 30000 });
       const appInfo = await page.evaluate(() => window.electronAPI.getAppInfo());

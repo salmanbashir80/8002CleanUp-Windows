@@ -40,6 +40,8 @@ jobs:
 
       - name: Native Application Settings and Restart Smoke
         run: node test/nativeWindowsSmoke.cjs
+        env:
+          DEBUG: pw:browser
 
       - name: Verify Architecture and Binary Metadata
         shell: pwsh
