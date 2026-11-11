@@ -53,7 +53,8 @@ import {
   MessageSquare,
   ShieldAlert,
   ShieldCheck,
-  Loader2
+  Loader2,
+  Settings as Cog
 } from 'lucide-react';
 
 import RegistryCleaner from './components/RegistryCleaner';
@@ -67,7 +68,7 @@ import { BrowserCleaner } from './components/BrowserCleaner';
 import { NotificationPanelPopover } from './components/NotificationPanelPopover';
 import { LicenseModal } from './components/LicenseModal';
 import { UpdateModal, UpdateInfo } from './components/UpdateModal';
-import { SettingsModal } from './components/SettingsModal';
+import { SettingsPage } from './components/SettingsPage';
 
 declare global {
   interface Window {
@@ -170,7 +171,8 @@ type ModuleId =
   | 'battery_lifeguard'
   | 'activity_monitor'
   | 'hardware_deep'
-  | 'my_tools';
+  | 'my_tools'
+  | 'settings';
 
 
 const CLEANUP_TABS: { id: ModuleId; label: string; icon: any }[] = [
@@ -251,8 +253,7 @@ export default function App() {
   // Customer Update System State & Background Notification Handlers
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [showUpdateModal, setShowUpdateModal] = useState<boolean>(false);
-  const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
-  const [isUpdateBannerDismissed, setIsUpdateBannerDismissed] = useState<boolean>(false);
+    const [isUpdateBannerDismissed, setIsUpdateBannerDismissed] = useState<boolean>(false);
 
   const handleCheckForUpdates = async () => {
     const electronAPI = (window as any).electronAPI;
@@ -1371,6 +1372,16 @@ export default function App() {
             <span>All 18 Tools Hub</span>
             <span className="nav-badge-count">18</span>
           </button>
+
+          <div className="nav-section-title">App</div>
+          <button
+            className={`nav-btn ${activeModule === 'settings' ? 'active' : ''}`}
+            onClick={() => setActiveModule('settings')}
+          >
+            <Cog size={14} color="#00e5ff" />
+            <span>Settings</span>
+            {updateInfo?.updateAvailable && <span className="nav-badge-count">1</span>}
+          </button>
         </div>
 
         {/* Live System Companion HUD Card in Sidebar */}
@@ -1483,7 +1494,7 @@ export default function App() {
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10.5, marginBottom: 6 }}>
             <span
-              onClick={() => setShowSettingsModal(true)}
+              onClick={() => setActiveModule('settings')}
               style={{ color: 'var(--text-secondary)', cursor: 'pointer', textDecoration: 'underline' }}
               title="Open Settings & Updates"
             >
@@ -1744,7 +1755,7 @@ export default function App() {
 
               <button
                 className="btn-secondary"
-                onClick={() => setShowSettingsModal(true)}
+                onClick={() => setActiveModule('settings')}
                 title="Application Settings & Updates"
                 style={{
                   padding: '5px 9px',
@@ -4126,6 +4137,18 @@ export default function App() {
           </div>
         )}
 
+        {activeModule === 'settings' && (
+          <SettingsPage
+            licenseStatus={licenseStatus}
+            dryRun={dryRun}
+            onToggleDryRun={() => setDryRun(!dryRun)}
+            onOpenLicense={() => setShowLicenseModal(true)}
+            onCheckForUpdates={handleCheckForUpdates}
+            updateInfo={updateInfo}
+            onOpenUpdate={() => setShowUpdateModal(true)}
+          />
+        )}
+
         {/* ============================================================== */}
         {/* 11. MODULE: ALL MY TOOLS HUB */}
         {/* ============================================================== */}
@@ -4358,18 +4381,6 @@ export default function App() {
         onCheckAgain={handleCheckForUpdates}
       />
 
-      {/* MODAL 5: SETTINGS & CLOUD UPDATES */}
-      <SettingsModal
-        isOpen={showSettingsModal}
-        onClose={() => setShowSettingsModal(false)}
-        currentVersion={licenseStatus?.version || '2.5.4'}
-        updateInfo={updateInfo}
-        onCheckUpdates={handleCheckForUpdates}
-        licenseStatus={licenseStatus}
-        onOpenLicense={() => setShowLicenseModal(true)}
-        dryRun={dryRun}
-        onToggleDryRun={() => setDryRun(!dryRun)}
-      />
     </div>
   );
 }

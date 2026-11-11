@@ -130,6 +130,7 @@ class UpdateManager {
     this.verifiedInstallerPath = null;
     this.lastCheckedAt = null;
     this.periodicTimer = null;
+    this.settingsFile = (app && app.getPath) ? path.join(app.getPath('userData'), 'app_settings.json') : null;
     this.eventListeners = {
       status: [],
       progress: [],
@@ -452,12 +453,34 @@ class UpdateManager {
   /**
    * Starts startup delayed check (10s) and recurring periodic checks (4h).
    */
+  getSettings() {
+    const defaults = { autoCheckUpdates: true, launchChecks: true };
+    try {
+      if (this.settingsFile && fs.existsSync(this.settingsFile)) {
+        const parsed = JSON.parse(fs.readFileSync(this.settingsFile, 'utf8'));
+        return { ...defaults, ...(parsed && typeof parsed === 'object' ? parsed : {}) };
+      }
+    } catch (_) {}
+    return defaults;
+  }
+
+  setSettings(patch = {}) {
+    const next = { ...this.getSettings() };
+    if (typeof patch.autoCheckUpdates === 'boolean') next.autoCheckUpdates = patch.autoCheckUpdates;
+    if (typeof patch.launchChecks === 'boolean') next.launchChecks = patch.launchChecks;
+    try {
+      if (this.settingsFile) fs.writeFileSync(this.settingsFile, JSON.stringify(next, null, 2), 'utf8');
+    } catch (_) {}
+    return next;
+  }
+
   startPeriodicChecks(mainWindowGetter) {
     if (this.periodicTimer) clearInterval(this.periodicTimer);
 
     // Initial delayed startup check
     setTimeout(async () => {
       try {
+        if (!this.getSettings().autoCheckUpdates) return;
         const result = await this.checkForUpdates({ manual: false });
         if (result && result.updateAvailable) {
           const win = typeof mainWindowGetter === 'function' ? mainWindowGetter() : null;
@@ -466,11 +489,12 @@ class UpdateManager {
           }
         }
       } catch (_) {}
-    }, 10000);
+    }, 3000);
 
     // Recurring interval
     this.periodicTimer = setInterval(async () => {
       try {
+        if (!this.getSettings().autoCheckUpdates) return;
         const result = await this.checkForUpdates({ manual: false });
         if (result && result.updateAvailable) {
           const win = typeof mainWindowGetter === 'function' ? mainWindowGetter() : null;

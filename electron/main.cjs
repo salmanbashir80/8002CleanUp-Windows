@@ -1545,6 +1545,22 @@ ipcMain.handle('get-update-status', async () => {
   return updateManager.getStatus();
 });
 
+// Settings page: app info + persisted preferences (renderer can only toggle whitelisted booleans)
+ipcMain.handle('get-app-info', async () => ({
+  name: app.getName(),
+  version: app.getVersion(),
+  platform: process.platform,
+  arch: process.arch,
+  electron: process.versions.electron,
+  channel: updateManager.channel,
+  lastCheckedAt: updateManager.lastCheckedAt,
+  signed: false
+}));
+
+ipcMain.handle('get-app-settings', async () => updateManager.getSettings());
+
+ipcMain.handle('set-app-settings', async (_event, patch) => updateManager.setSettings(patch || {}));
+
 // IPC 9: Real ScamAdviser Website Trust Scanner + Nova AI Cyber Guardian Pet (Gemini / Groq / Local)
 function callLLM({ prompt, apiKey, provider }) {
   return new Promise((resolve) => {
