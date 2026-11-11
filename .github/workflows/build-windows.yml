@@ -98,6 +98,35 @@ jobs:
             release/DEFENDER_SCAN.json
             release/GUMROAD_CONTENTS.txt
 
+      - name: Prepare Draft Release Notes
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/audit-finalization'
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          "RELEASE_VERSION=$version" >> $env:GITHUB_ENV
+          $notes = (Get-Content RELEASE_NOTES.md -Raw) -split "`n---`n", 2
+          $body = $notes[0] + "`n`nNative build evidence: https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID`nSource: $env:GITHUB_SHA`n`nNOT TESTED: installed v2.5.4 to v2.5.5 upgrade, paid-license/settings retention on the QA PC, native Settings interaction, installed-version rollback, and post-publication live update detection. Automated staging cleanup is not installed rollback. Unsigned installers may trigger SmartScreen/UAC. Do not publish until owner acceptance and approval."
+          $body | Set-Content release/DRAFT_RELEASE_NOTES.md
+
+      - name: Attach Artifacts to Draft GitHub Release
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/audit-finalization'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.RELEASE_VERSION }}
+          target_commitish: ${{ github.sha }}
+          name: 8002CleanUp Pro for Windows v${{ env.RELEASE_VERSION }} — QA Draft
+          draft: true
+          body_path: release/DRAFT_RELEASE_NOTES.md
+          files: |
+            release/*.exe
+            release/*.zip
+            release/SHA256SUMS.txt
+            release/BINARY_METADATA.json
+            release/DEFENDER_SCAN.json
+            release/GUMROAD_CONTENTS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Prepare Draft GitHub Release (on owner-approved tag push)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
