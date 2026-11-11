@@ -93,21 +93,6 @@ jobs:
             $actual | Set-Content release/GUMROAD_CONTENTS.txt
           } finally { $zip.Dispose() }
 
-      - name: Upload Windows EXE & Commercial Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: 8002CleanUp-Windows-Release-Package
-          path: |
-            release/*.exe
-            release/*.zip
-            release/SHA256SUMS.txt
-            release/*.blockmap
-            release/BINARY_METADATA.json
-            release/DEFENDER_SCAN.json
-            release/GUMROAD_CONTENTS.txt
-            release/NATIVE_SMOKE.json
-            release/NATIVE_SETTINGS.png
-
       - name: Prepare Draft Release Notes
         if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/audit-finalization'
         shell: pwsh
@@ -151,3 +136,21 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows EXE & Commercial Artifacts
+        if: github.event_name != 'workflow_dispatch'
+        continue-on-error: true
+        timeout-minutes: 2
+        uses: actions/upload-artifact@v4
+        with:
+          name: 8002CleanUp-Windows-Release-Package
+          path: |
+            release/*.exe
+            release/*.zip
+            release/SHA256SUMS.txt
+            release/*.blockmap
+            release/BINARY_METADATA.json
+            release/DEFENDER_SCAN.json
+            release/GUMROAD_CONTENTS.txt
+            release/NATIVE_SMOKE.json
+            release/NATIVE_SETTINGS.png

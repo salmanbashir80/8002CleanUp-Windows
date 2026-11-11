@@ -18,7 +18,15 @@ const { _electron: electron } = require('playwright-core');
       instance = await electron.launch({ executablePath, args: ['--disable-gpu'], timeout: 60000 });
       instance.process().stderr?.on('data', data => process.stderr.write(data));
       instance.process().on('exit', (code, signal) => console.log(`Native app exit: code=${code}, signal=${signal}`));
-      const page = await instance.firstWindow();
+      // The app also creates a hidden tray window. Select the real main
+      // document rather than relying on nondeterministic window creation order.
+      const deadline = Date.now() + 30000;
+      let page;
+      while (Date.now() < deadline && !page) {
+        page = instance.windows().find(window => window.url().endsWith('/dist/index.html'));
+        if (!page) await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      assert.ok(page, 'Main application document must open');
       await page.waitForFunction(() => Boolean(window.electronAPI?.getAppInfo), { timeout: 30000 });
       const appInfo = await page.evaluate(() => window.electronAPI.getAppInfo());
       assert.equal(appInfo.version, expectedVersion);
