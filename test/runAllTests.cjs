@@ -11,6 +11,7 @@ console.log('  8002CleanUp Pro Windows — Quality & Safety Suite  ');
 console.log('====================================================\n');
 
 const tests = [
+  { name: 'Production Updater Security & Settings Tests', file: 'test/updateSecurity.test.cjs' },
   { name: 'License & Gumroad Manager Tests', file: 'test/licenseManager.test.cjs' },
   { name: 'Windows Safety Guard & Path Allowlist Tests', file: 'test/safetyGuard.test.cjs' },
   { name: 'Customer Update System & Rollback Tests', file: 'test/updateManager.test.cjs' }

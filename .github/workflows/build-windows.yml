@@ -25,24 +25,23 @@ jobs:
           node-version: 20
 
       - name: Install Dependencies
-        run: npm ci || npm install
+        run: npm ci
 
       - name: Run Quality, Safety & Unit Tests
         run: npm run check
 
       - name: Build Windows 10/11 NSIS Installer & Portable EXE
-        run: npm run dist:win
+        run: npm run dist:win -- --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify Architecture and Binary Metadata
         shell: pwsh
-        run: |
-          Get-ChildItem -Path release -Filter *.exe | ForEach-Object {
-            Write-Host "Verifying: $($_.Name) ($($_.Length) bytes)"
-            $cert = Get-AuthenticodeSignature $_.FullName
-            Write-Host "Signature Status: $($cert.Status)"
-          }
+        run: ./tools/verify-windows-release.ps1
+
+      - name: Windows Defender Scan
+        shell: pwsh
+        run: ./tools/scan-windows-release.ps1
 
       - name: Generate SHA-256 Checksums
         shell: pwsh
@@ -67,11 +66,24 @@ jobs:
           Copy-Item "LICENSE_ACTIVATION.md" -Destination $gumroadDir\
           Copy-Item "RELEASE_NOTES.md" -Destination $gumroadDir\
           Copy-Item "EULA.txt" -Destination $gumroadDir\
-          Copy-Item "COMMERCIAL_README.txt" -Destination $gumroadDir\
+          Copy-Item "COMMERCIAL_README.txt" -Destination "$gumroadDir\README.txt"
           $pkgVersion = (Get-Content package.json | ConvertFrom-Json).version
           Compress-Archive -Path "$gumroadDir\*" -DestinationPath "release\8002CleanUp-Windows-v$pkgVersion-Gumroad.zip" -Force
           Write-Host "Gumroad ZIP Created:"
           Get-Item "release\8002CleanUp-Windows-v$pkgVersion-Gumroad.zip" | Select-Object Name, Length
+
+      - name: Verify Gumroad ZIP Contents
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zip = [IO.Compression.ZipFile]::OpenRead((Resolve-Path "release/8002CleanUp-Windows-v$version-Gumroad.zip"))
+          try {
+            $expected = @("8002CleanUp-Windows-Setup-v$version.exe", "8002CleanUp-Windows-Portable-v$version.exe", 'SHA256SUMS.txt', 'EULA.txt', 'README.txt', 'INSTALLATION.md', 'LICENSE_ACTIVATION.md', 'RELEASE_NOTES.md')
+            $actual = @($zip.Entries | ForEach-Object { $_.FullName })
+            if (Compare-Object $expected $actual) { throw 'Gumroad ZIP contents differ from the required manifest' }
+            $actual | Set-Content release/GUMROAD_CONTENTS.txt
+          } finally { $zip.Dispose() }
 
       - name: Upload Windows EXE & Commercial Artifacts
         uses: actions/upload-artifact@v4
@@ -82,8 +94,11 @@ jobs:
             release/*.zip
             release/SHA256SUMS.txt
             release/*.blockmap
+            release/BINARY_METADATA.json
+            release/DEFENDER_SCAN.json
+            release/GUMROAD_CONTENTS.txt
 
-      - name: Publish to GitHub Release (on tag push)
+      - name: Prepare Draft GitHub Release (on owner-approved tag push)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:

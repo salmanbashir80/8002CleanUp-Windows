@@ -128,6 +128,7 @@ class UpdateManager {
     this.state = 'idle'; // idle | checking | update_available | up_to_date | downloading | verifying | ready_to_install | failed
     this.updateInfo = null;
     this.verifiedInstallerPath = null;
+    this.verifiedSha256 = null;
     this.lastCheckedAt = null;
     this.periodicTimer = null;
     this.settingsFile = (app && app.getPath) ? path.join(app.getPath('userData'), 'app_settings.json') : null;
@@ -190,7 +191,7 @@ class UpdateManager {
       // Check if candidate version is strictly newer
       const isNewer = semverCompare(remoteVersion, this.currentVersion) > 0;
 
-      if (!isNewer) {
+      if (!isNewer || release.draft === true || release.prerelease === true) {
         this.state = 'up_to_date';
         this.updateInfo = null;
         this.emit('status', this.getStatus());
@@ -259,6 +260,8 @@ class UpdateManager {
       throw new Error('No verified update is currently pending download.');
     }
 
+    this.verifiedInstallerPath = null;
+    this.verifiedSha256 = null;
     this.state = 'downloading';
     this.emit('status', this.getStatus());
 
@@ -301,8 +304,12 @@ class UpdateManager {
       }
     }
 
+    // Fail closed: a missing/unreadable/invalid manifest is never verification.
     // 2. Stream download to target file while computing SHA-256
     try {
+      if (!expectedSha256) {
+        throw new Error('INTEGRITY_VERIFICATION_FAILED: No valid SHA-256 checksum is available for this installer.');
+      }
       const responseStream = await fetchWithRedirects(this.updateInfo.downloadUrl, { timeout: 60000 });
       const totalBytes = parseInt(responseStream.headers['content-length'] || this.updateInfo.downloadSize || 0, 10);
       let downloadedBytes = 0;
@@ -366,14 +373,15 @@ class UpdateManager {
 
       this.state = 'ready_to_install';
       this.verifiedInstallerPath = targetFilePath;
+      this.verifiedSha256 = computedSha256;
       this.emit('status', this.getStatus());
 
       return {
         success: true,
         verifiedInstallerPath: targetFilePath,
         computedSha256,
-        expectedSha256: expectedSha256 || 'None provided by server',
-        verified: !!expectedSha256
+        expectedSha256,
+        verified: true
       };
     } catch (err) {
       // Clean up failed staging download
@@ -401,6 +409,20 @@ class UpdateManager {
     if (!fs.existsSync(this.verifiedInstallerPath)) {
       this.state = 'failed';
       throw new Error('Verified installer binary was not found on disk. Please re-download.');
+    }
+
+    // Recheck immediately before execution: a staged file can change after download.
+    const actualHash = crypto.createHash('sha256')
+      .update(fs.readFileSync(this.verifiedInstallerPath)).digest('hex');
+    if (!this.verifiedSha256 || actualHash !== this.verifiedSha256) {
+      try { fs.unlinkSync(this.verifiedInstallerPath); } catch (_) {}
+      this.verifiedInstallerPath = null;
+      this.verifiedSha256 = null;
+      this.state = 'failed';
+      const error = new Error('INTEGRITY_VERIFICATION_FAILED: Staged installer changed after verification.');
+      this.emit('error', { error: error.message });
+      this.emit('status', this.getStatus());
+      throw error;
     }
 
     this.state = 'installing';
@@ -445,13 +467,14 @@ class UpdateManager {
     } catch (_) {}
 
     this.verifiedInstallerPath = null;
+    this.verifiedSha256 = null;
     this.state = 'idle';
     this.emit('status', this.getStatus());
     return { success: true };
   }
 
   /**
-   * Starts startup delayed check (10s) and recurring periodic checks (4h).
+   * Starts startup delayed check (3s) and recurring periodic checks (4h).
    */
   getSettings() {
     const defaults = { autoCheckUpdates: true, launchChecks: true };

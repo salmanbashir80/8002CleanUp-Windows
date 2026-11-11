@@ -1,3 +1,20 @@
+# 8002CleanUp Pro v2.5.5 — Draft release candidate
+
+**Prepared:** November 11, 2026
+**Platforms:** Windows 10 and 11, x64
+**Status:** DRAFT — not published; native upgrade acceptance is pending.
+
+- Settings includes software updates, license management, Safe Preview and About.
+- Automatic update checks use the saved preference (3 seconds after launch, then every 4 hours).
+- Update detection ignores draft and prerelease candidates, including manual checks.
+- Missing, unreadable, malformed or mismatched SHA-256 manifests prevent installation.
+- Installers are hashed again immediately before launch to reject changes after download verification.
+- Application identity and customer data paths are unchanged. Actual paid-license/settings retention during a native v2.5.4 → v2.5.5 upgrade must be verified before publication.
+- Setup and Portable installers are unsigned. Windows may show SmartScreen or UAC prompts. No silent/automatic installation is claimed.
+- Native runner produces metadata, Defender results, SHA256SUMS.txt and the Gumroad ZIP. See the final QA report for results; automated staging cancellation is not an installed-version rollback test.
+
+---
+
 # 8002CleanUp Pro v2.5.4 — Commercial Gumroad Internal Product ID Alignment
 
 **Release Date:** November 9, 2026  

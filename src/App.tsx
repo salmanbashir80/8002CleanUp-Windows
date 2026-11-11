@@ -1498,7 +1498,7 @@ export default function App() {
               style={{ color: 'var(--text-secondary)', cursor: 'pointer', textDecoration: 'underline' }}
               title="Open Settings & Updates"
             >
-              v2.5.4 Pro
+              v2.5.5 Pro
             </span>
             <span style={{ color: '#18e299', fontWeight: 600 }}>● Live Engine</span>
           </div>
