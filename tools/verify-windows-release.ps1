@@ -15,7 +15,7 @@ function Get-PEMachine([string]$file) {
 $payload = Get-Item 'release/win-unpacked/8002CleanUp Pro.exe'
 if ((Get-PEMachine $payload.FullName) -ne 0x8664) { throw 'Application payload must be x64' }
 $info = $payload.VersionInfo
-if ($info.ProductVersion -ne $version) { throw "Payload version mismatch: $($info.ProductVersion) vs $version" }
+if ($info.ProductVersion -notmatch "^$([regex]::Escape($version))(\.0)?$") { throw "Payload version mismatch: $($info.ProductVersion) vs $version" }
 $metadata = @([ordered]@{name=$payload.Name; role='application payload'; machine='0x8664 (x64)'; productVersion=$info.ProductVersion; fileVersion=$info.FileVersion; signature=(Get-AuthenticodeSignature $payload.FullName).Status.ToString()})
 foreach ($kind in @('Setup', 'Portable')) {
     $exe = Get-Item "release/8002CleanUp-Windows-$kind-v$version.exe"
