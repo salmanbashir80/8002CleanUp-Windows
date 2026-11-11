@@ -15,7 +15,7 @@ When you purchase 8002CleanUp Pro on Gumroad, your purchase confirmation email c
    - Enter your **Email Address** associated with your Gumroad order.
 4. Click **"Activate Pro License"**.
 5. Once verified, your status will update to **`PRO ACTIVATED`**.
-6. Your license token is securely cached locally, so 8002CleanUp Pro continues operating **100% offline** without needing a persistent internet connection.
+6. Your Gumroad license is cached locally for a **14-day offline grace period** after successful online verification. Reconnect periodically so the app can revalidate entitlement, including refund and chargeback status.
 
 ---
 
