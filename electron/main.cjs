@@ -479,11 +479,6 @@ if (!gotSingleLock) {
       mainWindow.focus();
     }
   });
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.show();
-      mainWindow.focus();
-    }
-  });
 
   app.whenReady().then(() => {
     cleanupStaleTempFiles();
@@ -724,15 +719,6 @@ ipcMain.handle('get-system-telemetry', async (_event, options = {}) => {
                   impact: cpuVal > 15 || memMB > 600 ? 'High' : cpuVal > 5 || memMB > 250 ? 'Medium' : 'Low'
                 });
               }
-              if (procs.length > 0) cachedProcesses = procs;
-            } catch (_) {}
-          }
-        })
-        .catch(() => {
-          isFetchingProcesses = false;
-        });
-    }
-  }
               if (procs.length > 0) cachedProcesses = procs;
             } catch (_) {}
           }

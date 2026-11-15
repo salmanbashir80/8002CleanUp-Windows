@@ -11,6 +11,7 @@ console.log('  8002CleanUp Pro Windows — Quality & Safety Suite  ');
 console.log('====================================================\n');
 
 const tests = [
+  { name: 'Electron Runtime & CommonJS Syntax Integrity', cmd: 'node -c electron/main.cjs electron/preload.cjs electron/updateManager.cjs electron/licenseManager.cjs electron/safetyGuard.cjs' },
   { name: 'Production Updater Security & Settings Tests', file: 'test/updateSecurity.test.cjs' },
   { name: 'License & Gumroad Manager Tests', file: 'test/licenseManager.test.cjs' },
   { name: 'Windows Safety Guard & Path Allowlist Tests', file: 'test/safetyGuard.test.cjs' },
@@ -24,8 +25,12 @@ let totalFailed = 0;
 for (const t of tests) {
   process.stdout.write(`[RUNNING] ${t.name}... `);
   try {
-    const fullPath = path.resolve(__dirname, '..', t.file);
-    execSync(`node "${fullPath}"`, { stdio: 'pipe' });
+    if (t.cmd) {
+      execSync(t.cmd, { cwd: path.resolve(__dirname, '..'), stdio: 'pipe' });
+    } else {
+      const fullPath = path.resolve(__dirname, '..', t.file);
+      execSync(`node "${fullPath}"`, { stdio: 'pipe' });
+    }
     console.log('PASSED ✓');
     totalPassed++;
   } catch (err) {
