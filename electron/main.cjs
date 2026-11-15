@@ -36,9 +36,19 @@ function getAppIconImage() {
 
 function execAsync(cmd, timeout = 5000) {
   return new Promise((resolve) => {
-    exec(cmd, { timeout, maxBuffer: 4 * 1024 * 1024 }, (err, stdout, stderr) => {
+    const child = exec(cmd, { timeout, maxBuffer: 4 * 1024 * 1024, windowsHide: true }, (err, stdout, stderr) => {
       resolve({ err, stdout: stdout ? stdout.toString() : '', stderr: stderr ? stderr.toString() : '' });
     });
+    if (timeout && child && child.pid && process.platform === 'win32') {
+      const killerTimer = setTimeout(() => {
+        try {
+          if (!child.killed) {
+            exec(`taskkill /T /F /PID ${child.pid}`, { windowsHide: true }, () => {});
+          }
+        } catch (_) {}
+      }, timeout + 500);
+      child.on('exit', () => clearTimeout(killerTimer));
+    }
   });
 }
 
@@ -360,13 +370,13 @@ let netSpeedInterval = null;
 
 function updateNetworkSpeed() {
   if (isQueryingSpeed) return;
-  // If main window is destroyed or minimized, don't execute netstat to conserve CPU
-  if (mainWindow && (mainWindow.isDestroyed() || mainWindow.isMinimized())) return;
+  // If main window is destroyed, hidden, or minimized, don't execute netstat to conserve CPU
+  if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible() || mainWindow.isMinimized()) return;
 
   isQueryingSpeed = true;
 
   if (process.platform === 'win32') {
-    exec('netstat -e', { timeout: 1500 }, (err, stdout) => {
+    execFile('netstat', ['-e'], { timeout: 2000, windowsHide: true }, (err, stdout) => {
       isQueryingSpeed = false;
       if (!err && stdout) {
         const match = stdout.match(/Bytes\s+(\d+)\s+(\d+)/i);
@@ -442,19 +452,20 @@ function updateNetworkSpeed() {
 function cleanupStaleTempFiles() {
   try {
     const tmp = os.tmpdir();
-    const files = fs.readdirSync(tmp);
-    for (const f of files) {
-      if (f.startsWith('8002_') && f.endsWith('.ps1')) {
-        try { fs.unlinkSync(path.join(tmp, f)); } catch (_) {}
+    fs.promises.readdir(tmp).then((files) => {
+      for (const f of files) {
+        if (f.startsWith('8002_') && f.endsWith('.ps1')) {
+          fs.promises.unlink(path.join(tmp, f)).catch(() => {});
+        }
       }
-    }
+    }).catch(() => {});
   } catch (_) {}
 }
 
 function startLiveNetworkMonitor() {
   updateNetworkSpeed();
   if (netSpeedInterval) clearInterval(netSpeedInterval);
-  netSpeedInterval = setInterval(updateNetworkSpeed, 3200);
+  netSpeedInterval = setInterval(updateNetworkSpeed, 5000);
 }
 
 const gotSingleLock = app.requestSingleInstanceLock();
@@ -463,6 +474,11 @@ if (!gotSingleLock) {
 } else {
   app.on('second-instance', () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
+      if (!mainWindow.isVisible()) mainWindow.show();
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.show();
       mainWindow.focus();
@@ -493,8 +509,55 @@ app.on('window-all-closed', () => {
   }
 });
 
-// Helper: Calculate directory size safely (accurate recursive walk)
-function getDirectoryStats(dirPath, maxDepth = 4, currentDepth = 0) {
+// Helper: Calculate directory size safely and asynchronously with event-loop yielding
+async function getDirectoryStatsAsync(dirPath, maxDepth = 4) {
+  let totalBytes = 0;
+  let fileCount = 0;
+  const sampleItems = [];
+  try {
+    const exists = await fs.promises.access(dirPath).then(() => true).catch(() => false);
+    if (!exists) return { totalBytes: 0, fileCount: 0, sampleItems: [] };
+
+    const queue = [{ p: dirPath, d: 0 }];
+    let processed = 0;
+
+    while (queue.length > 0) {
+      const { p, d } = queue.shift();
+      let entries = [];
+      try {
+        entries = await fs.promises.readdir(p, { withFileTypes: true });
+      } catch (_) {
+        continue;
+      }
+
+      for (const entry of entries) {
+        processed++;
+        if (processed % 80 === 0) {
+          // Yield to Node.js event loop so UI / Windows message pump stays 100% responsive
+          await new Promise((resolve) => setImmediate(resolve));
+        }
+
+        const fullPath = path.join(p, entry.name);
+        try {
+          if (entry.isFile()) {
+            const st = await fs.promises.stat(fullPath);
+            totalBytes += st.size;
+            fileCount += 1;
+            if (sampleItems.length < 10 && st.size > 1024 * 50) {
+              sampleItems.push({ path: fullPath, name: entry.name, sizeBytes: st.size });
+            }
+          } else if (entry.isDirectory() && d < maxDepth) {
+            queue.push({ p: fullPath, d: d + 1 });
+          }
+        } catch (_) {}
+      }
+    }
+  } catch (_) {}
+  return { totalBytes, fileCount, sampleItems };
+}
+
+// Lightweight synchronous fallback for non-critical fast stats
+function getDirectoryStats(dirPath, maxDepth = 2, currentDepth = 0) {
   let totalBytes = 0;
   let fileCount = 0;
   const sampleItems = [];
@@ -502,6 +565,7 @@ function getDirectoryStats(dirPath, maxDepth = 4, currentDepth = 0) {
     if (!fs.existsSync(dirPath)) return { totalBytes: 0, fileCount: 0, sampleItems: [] };
     const entries = fs.readdirSync(dirPath, { withFileTypes: true });
     for (const entry of entries) {
+      if (fileCount > 250) break; // Hard cap on synchronous scanning to prevent UI freezes
       const fullPath = path.join(dirPath, entry.name);
       try {
         if (entry.isFile()) {
@@ -596,11 +660,11 @@ ipcMain.handle('get-system-telemetry', async (_event, options = {}) => {
 
   const now = Date.now();
 
-  // Async non-blocking Battery & Thermal check: query real OS readings
-  if (isWin && batteryHasHardware && (now - lastBatteryCheckTime > 60000 || !hasCheckedBattery)) {
+  // Async non-blocking Battery check: query real OS readings safely without ACPI thermal zone hangs
+  if (isWin && batteryHasHardware && (now - lastBatteryCheckTime > 120000 || !hasCheckedBattery)) {
     hasCheckedBattery = true;
     lastBatteryCheckTime = now;
-    execAsync('powershell -NoProfile -Command "try { $b = Get-CimInstance Win32_Battery -ErrorAction Stop | Select-Object EstimatedChargeRemaining,BatteryStatus,DesignCapacity,FullChargeCapacity; $t = Get-CimInstance -Namespace root/wmi -ClassName MSAcpi_ThermalZoneTemperature -ErrorAction SilentlyContinue | Select-Object -First 1 CurrentTemperature; @{ hasBattery = $true; battery = $b; thermal = $t } | ConvertTo-Json -Compress } catch { @{ hasBattery = $false } | ConvertTo-Json -Compress }"', 4000)
+    execAsync('powershell -NoProfile -NonInteractive -Command "try { $b = Get-CimInstance Win32_Battery -ErrorAction Stop | Select-Object EstimatedChargeRemaining,BatteryStatus,DesignCapacity,FullChargeCapacity; @{ hasBattery = $true; battery = $b } | ConvertTo-Json -Compress } catch { @{ hasBattery = $false } | ConvertTo-Json -Compress }"', 3000)
       .then((batRes) => {
         if (batRes.stdout && batRes.stdout.trim()) {
           try {
@@ -620,19 +684,7 @@ ipcMain.handle('get-system-telemetry', async (_event, options = {}) => {
               cachedBattery.percent = null;
               cachedBattery.isCharging = false;
               cachedBattery.healthPercent = null;
-            }
-
-            // Real thermal zone reading if exposed by ACPI hardware
-            if (parsed && parsed.thermal && typeof parsed.thermal.CurrentTemperature === 'number') {
-              const k10 = parsed.thermal.CurrentTemperature;
-              // Kelvin tenths: (K - 2732)/10 = Celsius
-              if (k10 > 2732 && k10 < 3932) {
-                cachedBattery.temperatureC = Number(((k10 - 2732) / 10).toFixed(1));
-              } else {
-                cachedBattery.temperatureC = null;
-              }
-            } else {
-              cachedBattery.temperatureC = null;
+              batteryHasHardware = false; // Desktop machine without battery: never re-query
             }
           } catch (_) {}
         } else {
@@ -646,13 +698,13 @@ ipcMain.handle('get-system-telemetry', async (_event, options = {}) => {
       });
   }
 
-  // Top Processes: Only query when explicitly needed (e.g. task_list tab), throttle to 6 seconds
+  // Top Processes: Only query when explicitly needed (e.g. Activity Monitor tab), throttle to 10 seconds
   const shouldFetchProcesses = options && (options.includeProcesses || options.forceProcesses);
-  if (shouldFetchProcesses && !isFetchingProcesses && (now - lastProcessCheckTime > 6000 || cachedProcesses.length === 0)) {
+  if (shouldFetchProcesses && !isFetchingProcesses && (now - lastProcessCheckTime > 10000 || cachedProcesses.length === 0)) {
     isFetchingProcesses = true;
     lastProcessCheckTime = now;
     if (isWin) {
-      execAsync('powershell -NoProfile -Command "Get-Process | Sort-Object WorkingSet64 -Descending | Select-Object -First 12 Id,ProcessName,CPU,WorkingSet64 | ConvertTo-Json"', 4000)
+      execAsync('powershell -NoProfile -NonInteractive -Command "Get-Process | Sort-Object WorkingSet64 -Descending | Select-Object -First 10 Id,ProcessName,CPU,WorkingSet64 | ConvertTo-Json"', 4000)
         .then((procRes) => {
           isFetchingProcesses = false;
           if (procRes.stdout && procRes.stdout.trim()) {
@@ -672,6 +724,15 @@ ipcMain.handle('get-system-telemetry', async (_event, options = {}) => {
                   impact: cpuVal > 15 || memMB > 600 ? 'High' : cpuVal > 5 || memMB > 250 ? 'Medium' : 'Low'
                 });
               }
+              if (procs.length > 0) cachedProcesses = procs;
+            } catch (_) {}
+          }
+        })
+        .catch(() => {
+          isFetchingProcesses = false;
+        });
+    }
+  }
               if (procs.length > 0) cachedProcesses = procs;
             } catch (_) {}
           }
@@ -806,33 +867,41 @@ ipcMain.handle('scan-junk', async () => {
   const items = [];
   let totalBytes = 0;
 
+  let cachedRecycleBin = null;
+  let lastRecycleBinCheck = 0;
+
   for (const t of targets) {
     if (t.path === 'RECYCLE_BIN') {
       try {
-        const ps = '$sh = New-Object -ComObject Shell.Application; $rb = $sh.Namespace(0xa); $items = $rb.Items(); $total = 0; foreach ($i in $items) { $total += $i.Size }; [PSCustomObject]@{ Count = $items.Count; SizeBytes = $total } | ConvertTo-Json -Compress';
-        const b64 = Buffer.from(ps, 'utf16le').toString('base64');
-        const rbRes = await execAsync(`powershell -NoProfile -EncodedCommand ${b64}`, 3500);
-        if (rbRes.stdout.trim()) {
-          const data = JSON.parse(rbRes.stdout.trim());
-          if (data && data.SizeBytes > 0) {
-            totalBytes += data.SizeBytes;
-            items.push({
-              id: t.id,
-              title: t.title,
-              parentTitle: `${data.Count || 0} items in Recycle Bin`,
-              category: t.category,
-              path: t.path,
-              sizeBytes: data.SizeBytes,
-              safety: t.safety,
-              selected: true
-            });
+        const now = Date.now();
+        if (!cachedRecycleBin || (now - lastRecycleBinCheck > 30000)) {
+          const ps = '$sh = New-Object -ComObject Shell.Application; $rb = $sh.Namespace(0xa); $items = $rb.Items(); $total = 0; foreach ($i in $items) { $total += $i.Size }; [PSCustomObject]@{ Count = $items.Count; SizeBytes = $total } | ConvertTo-Json -Compress';
+          const b64 = Buffer.from(ps, 'utf16le').toString('base64');
+          const rbRes = await execAsync(`powershell -NoProfile -NonInteractive -EncodedCommand ${b64}`, 3000);
+          if (rbRes.stdout.trim()) {
+            cachedRecycleBin = JSON.parse(rbRes.stdout.trim());
+            lastRecycleBinCheck = now;
           }
         }
+        if (cachedRecycleBin && cachedRecycleBin.SizeBytes > 0) {
+          totalBytes += cachedRecycleBin.SizeBytes;
+          items.push({
+            id: t.id,
+            title: t.title,
+            parentTitle: `${cachedRecycleBin.Count || 0} items in Recycle Bin`,
+            category: t.category,
+            path: t.path,
+            sizeBytes: cachedRecycleBin.SizeBytes,
+            safety: t.safety,
+            selected: true
+          });
+        }
       } catch (_e) {}
+      await new Promise((r) => setImmediate(r));
       continue;
     }
 
-    const stats = getDirectoryStats(t.path);
+    const stats = await getDirectoryStatsAsync(t.path, 3);
     if (stats.totalBytes > 0) {
       totalBytes += stats.totalBytes;
       items.push({
@@ -846,6 +915,7 @@ ipcMain.handle('scan-junk', async () => {
         selected: true
       });
     }
+    await new Promise((r) => setImmediate(r));
   }
 
   return {
@@ -1002,16 +1072,8 @@ ipcMain.handle('clean-items', async (event, { paths, dryRun }) => {
           });
           cleanedCount += res.count;
           freedBytes += res.freed;
-
-          // For Windows Temp folders, run a quick native cleanup sweep for stubborn unlocked items
-          if (process.platform === 'win32' && (p === os.tmpdir() || p.toLowerCase().includes('windows\\temp'))) {
-            try {
-              const safeP = p.replace(/'/g, "''");
-              await execAsync(`powershell -NoProfile -Command "Get-ChildItem -Path '${safeP}' -Recurse -Force -ErrorAction SilentlyContinue | Where-Object { -not $_.PSIsContainer } | Remove-Item -Force -ErrorAction SilentlyContinue"`, 7000);
-            } catch (_) {}
-          }
         } else {
-          const est = getDirectoryStats(p, 2);
+          const est = await getDirectoryStatsAsync(p, 2);
           cleanedCount += est.fileCount;
           freedBytes += est.totalBytes;
         }
@@ -2508,7 +2570,7 @@ ipcMain.handle('run-deep-scan', async () => {
       try {
         const ps = '$sh = New-Object -ComObject Shell.Application; $rb = $sh.Namespace(0xa); $items = $rb.Items(); $total = 0; foreach ($i in $items) { $total += $i.Size }; [PSCustomObject]@{ Count = $items.Count; SizeBytes = $total } | ConvertTo-Json -Compress';
         const b64 = Buffer.from(ps, 'utf16le').toString('base64');
-        const rbRes = await execAsync(`powershell -NoProfile -EncodedCommand ${b64}`, 3500);
+        const rbRes = await execAsync(`powershell -NoProfile -NonInteractive -EncodedCommand ${b64}`, 3500);
         if (rbRes.stdout.trim()) {
           const data = JSON.parse(rbRes.stdout.trim());
           if (data && data.SizeBytes > 0) {
@@ -2531,7 +2593,7 @@ ipcMain.handle('run-deep-scan', async () => {
       continue;
     }
 
-    const st = getDirectoryStats(t.path, 3);
+    const st = await getDirectoryStatsAsync(t.path, 3);
     totalBytes += st.totalBytes;
     itemsCount += st.fileCount;
     phasesResult.push({
@@ -3171,7 +3233,7 @@ if (\$foundRaw) {
   return { success: false, message: 'Self-test could not complete probe execution.' };
 });
 
-// Space Lens: Discover Large & Old Files
+// Space Lens: Discover Large & Old Files (Non-blocking Async Streaming)
 ipcMain.handle('scan-large-files', async (_event, { minSizeMB = 50 }) => {
   const home = os.homedir();
   const dirs = [
@@ -3184,40 +3246,59 @@ ipcMain.handle('scan-large-files', async (_event, { minSizeMB = 50 }) => {
   const results = [];
   const minBytes = minSizeMB * 1024 * 1024;
 
-  function walk(d, depth = 0) {
-    if (depth > 3 || results.length > 80) return;
+  for (const dir of dirs) {
+    if (results.length >= 80) break;
     try {
-      if (!fs.existsSync(d)) return;
-      const entries = fs.readdirSync(d, { withFileTypes: true });
-      for (const e of entries) {
-        const full = path.join(d, e.name);
-        try {
-          if (e.isFile()) {
-            const st = fs.statSync(full);
-            if (st.size >= minBytes) {
-              const ext = path.extname(e.name).toLowerCase();
-              let category = 'Documents';
-              if (['.zip', '.rar', '.7z', '.tar', '.gz', '.iso'].includes(ext)) category = 'Archives';
-              else if (['.mp4', '.mkv', '.avi', '.mov', '.wmv'].includes(ext)) category = 'Videos';
-              else if (['.exe', '.msi'].includes(ext)) category = 'Applications';
+      const exists = await fs.promises.access(dir).then(() => true).catch(() => false);
+      if (!exists) continue;
 
-              results.push({
-                name: e.name,
-                path: full,
-                sizeBytes: st.size,
-                category,
-                modifiedDaysAgo: Math.round((Date.now() - st.mtimeMs) / (1000 * 60 * 60 * 24))
-              });
-            }
-          } else if (e.isDirectory()) {
-            walk(full, depth + 1);
+      const queue = [{ p: dir, d: 0 }];
+      let processed = 0;
+
+      while (queue.length > 0 && results.length < 80) {
+        const { p, d } = queue.shift();
+        let entries = [];
+        try {
+          entries = await fs.promises.readdir(p, { withFileTypes: true });
+        } catch (_) {
+          continue;
+        }
+
+        for (const e of entries) {
+          processed++;
+          if (processed % 60 === 0) {
+            await new Promise((resolve) => setImmediate(resolve));
           }
-        } catch (_err) {}
+
+          const full = path.join(p, e.name);
+          try {
+            if (e.isFile()) {
+              const st = await fs.promises.stat(full);
+              if (st.size >= minBytes) {
+                const ext = path.extname(e.name).toLowerCase();
+                let category = 'Documents';
+                if (['.zip', '.rar', '.7z', '.tar', '.gz', '.iso'].includes(ext)) category = 'Archives';
+                else if (['.mp4', '.mkv', '.avi', '.mov', '.wmv'].includes(ext)) category = 'Videos';
+                else if (['.exe', '.msi'].includes(ext)) category = 'Applications';
+
+                results.push({
+                  name: e.name,
+                  path: full,
+                  sizeBytes: st.size,
+                  category,
+                  modifiedDaysAgo: Math.round((Date.now() - st.mtimeMs) / (1000 * 60 * 60 * 24))
+                });
+                if (results.length >= 80) break;
+              }
+            } else if (e.isDirectory() && d < 3) {
+              queue.push({ p: full, d: d + 1 });
+            }
+          } catch (_err) {}
+        }
       }
     } catch (_e) {}
   }
 
-  for (const dir of dirs) walk(dir);
   return results.sort((a, b) => b.sizeBytes - a.sizeBytes);
 });
 
@@ -3343,32 +3424,44 @@ ipcMain.handle('empty-recycle-bin', async () => {
 // ADVANCED BROWSER PRIVACY & MULTI-PROFILE CACHE COMMAND CENTER
 // ==============================================================
 
-function isProcessRunningSync(procName) {
-  if (process.platform !== 'win32') return false;
-  try {
-    const stdout = require('child_process').execFileSync('tasklist', ['/fo', 'csv', '/nh'], { timeout: 3000, encoding: 'utf8' });
-    return stdout.toLowerCase().includes(`${procName.toLowerCase()}.exe`);
-  } catch (_) {
-    return false;
-  }
+async function getRunningProcessNamesAsync() {
+  if (process.platform !== 'win32') return new Set();
+  return new Promise((resolve) => {
+    execFile('tasklist', ['/fo', 'csv', '/nh'], { timeout: 4000, windowsHide: true, encoding: 'utf8' }, (err, stdout) => {
+      if (err || !stdout) return resolve(new Set());
+      const names = new Set();
+      const lines = stdout.split(/\r?\n/);
+      for (const line of lines) {
+        const m = line.match(/^"([^"]+)"/);
+        if (m) names.add(m[1].toLowerCase());
+      }
+      resolve(names);
+    });
+  });
 }
 
-function getFolderRecursiveStats(dirPath, maxDepth = 4) {
+async function getFolderRecursiveStatsAsync(dirPath, maxDepth = 4) {
   let size = 0;
   let count = 0;
-  if (!fs.existsSync(dirPath)) return { size, count };
-
   try {
+    const exists = await fs.promises.access(dirPath).then(() => true).catch(() => false);
+    if (!exists) return { size, count };
+
     const queue = [{ p: dirPath, d: 0 }];
+    let processed = 0;
     while (queue.length > 0) {
       const { p, d } = queue.shift();
       let entries = [];
       try {
-        entries = fs.readdirSync(p, { withFileTypes: true });
+        entries = await fs.promises.readdir(p, { withFileTypes: true });
       } catch (_) {
         continue;
       }
       for (const e of entries) {
+        processed++;
+        if (processed % 70 === 0) {
+          await new Promise((resolve) => setImmediate(resolve));
+        }
         const full = path.join(p, e.name);
         try {
           if (e.isDirectory()) {
@@ -3376,7 +3469,7 @@ function getFolderRecursiveStats(dirPath, maxDepth = 4) {
               queue.push({ p: full, d: d + 1 });
             }
           } else if (e.isFile()) {
-            const st = fs.statSync(full);
+            const st = await fs.promises.stat(full);
             size += st.size;
             count++;
           }
@@ -3391,6 +3484,8 @@ ipcMain.handle('scan-browser-data', async () => {
   const home = os.homedir();
   const localAppData = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
   const appData = process.env.APPDATA || path.join(home, 'AppData', 'Roaming');
+
+  const runningProcessSet = await getRunningProcessNamesAsync();
 
   const browsersDef = [
     {
@@ -3454,7 +3549,7 @@ ipcMain.handle('scan-browser-data', async () => {
       continue;
     }
 
-    const isRunning = isProcessRunningSync(b.processName);
+    const isRunning = runningProcessSet.has(`${b.processName.toLowerCase()}.exe`);
 
     if (b.type === 'chromium') {
       const userData = b.userDataDir;
@@ -3480,7 +3575,7 @@ ipcMain.handle('scan-browser-data', async () => {
       for (const gcd of ['ShaderCache', 'GrShaderCache', 'GraphiteDawnCache', 'GPUPersistentCache']) {
         const p = path.join(userData, gcd);
         if (fs.existsSync(p)) {
-          const st = getFolderRecursiveStats(p, 3);
+          const st = await getFolderRecursiveStatsAsync(p, 3);
           cacheBytes += st.size;
           cacheCount += st.count;
           cachePaths.push(p);
@@ -3490,7 +3585,7 @@ ipcMain.handle('scan-browser-data', async () => {
         for (const lcd of ['Cache', 'Code Cache', 'GPUCache']) {
           const p = path.join(b.localCacheDir, lcd);
           if (fs.existsSync(p)) {
-            const st = getFolderRecursiveStats(p, 3);
+            const st = await getFolderRecursiveStatsAsync(p, 3);
             cacheBytes += st.size;
             cacheCount += st.count;
             cachePaths.push(p);
@@ -3505,7 +3600,7 @@ ipcMain.handle('scan-browser-data', async () => {
       for (const cDir of ['Crashpad', 'BrowserMetrics', 'DeferredBrowserMetrics', 'Local Traces']) {
         const p = path.join(userData, cDir);
         if (fs.existsSync(p)) {
-          const st = getFolderRecursiveStats(p, 3);
+          const st = await getFolderRecursiveStatsAsync(p, 3);
           crashBytes += st.size;
           crashCount += st.count;
           crashPaths.push(p);
@@ -3534,7 +3629,7 @@ ipcMain.handle('scan-browser-data', async () => {
         for (const cName of ['Cache', 'Code Cache', 'GPUCache', 'DawnGraphiteCache', 'DawnWebGPUCache', 'image_cache']) {
           const cp = path.join(prof, cName);
           if (fs.existsSync(cp)) {
-            const st = getFolderRecursiveStats(cp, 3);
+            const st = await getFolderRecursiveStatsAsync(cp, 3);
             cacheBytes += st.size;
             cacheCount += st.count;
             cachePaths.push(cp);
@@ -3542,7 +3637,7 @@ ipcMain.handle('scan-browser-data', async () => {
         }
         const sw = path.join(prof, 'Service Worker', 'CacheStorage');
         if (fs.existsSync(sw)) {
-          const st = getFolderRecursiveStats(sw, 3);
+          const st = await getFolderRecursiveStatsAsync(sw, 3);
           cacheBytes += st.size;
           cacheCount += st.count;
           cachePaths.push(sw);
@@ -3576,7 +3671,7 @@ ipcMain.handle('scan-browser-data', async () => {
         for (const cd of ['IndexedDB', 'Local Storage', 'Session Storage']) {
           const cdp = path.join(prof, cd);
           if (fs.existsSync(cdp)) {
-            const st = getFolderRecursiveStats(cdp, 2);
+            const st = await getFolderRecursiveStatsAsync(cdp, 2);
             cookiesBytes += st.size;
             cookiesCount += st.count;
             cookiesPaths.push(cdp);
@@ -3590,7 +3685,7 @@ ipcMain.handle('scan-browser-data', async () => {
             try {
               const st = fs.statSync(sp);
               if (st.isDirectory()) {
-                const fst = getFolderRecursiveStats(sp, 2);
+                const fst = await getFolderRecursiveStatsAsync(sp, 2);
                 sessionsBytes += fst.size;
                 sessionsCount += fst.count;
               } else {
@@ -3605,11 +3700,12 @@ ipcMain.handle('scan-browser-data', async () => {
         // Downloads
         const dl = path.join(prof, 'Download Service');
         if (fs.existsSync(dl)) {
-          const st = getFolderRecursiveStats(dl, 2);
+          const st = await getFolderRecursiveStatsAsync(dl, 2);
           downloadsBytes += st.size;
           downloadsCount += st.count;
           downloadsPaths.push(dl);
         }
+        await new Promise((r) => setImmediate(r));
       }
 
       const totalSize = cacheBytes + historyBytes + cookiesBytes + sessionsBytes + crashBytes + downloadsBytes;
@@ -3711,14 +3807,14 @@ ipcMain.handle('scan-browser-data', async () => {
         if (local && fs.existsSync(local)) {
           const c2 = path.join(local, pName, 'cache2');
           if (fs.existsSync(c2)) {
-            const st = getFolderRecursiveStats(c2, 3);
+            const st = await getFolderRecursiveStatsAsync(c2, 3);
             cacheBytes += st.size;
             cacheCount += st.count;
             cachePaths.push(c2);
           }
           const sc = path.join(local, pName, 'startupCache');
           if (fs.existsSync(sc)) {
-            const st = getFolderRecursiveStats(sc, 3);
+            const st = await getFolderRecursiveStatsAsync(sc, 3);
             cacheBytes += st.size;
             cacheCount += st.count;
             cachePaths.push(sc);
@@ -3749,12 +3845,13 @@ ipcMain.handle('scan-browser-data', async () => {
           }
           const md = path.join(roaming, pName, 'minidumps');
           if (fs.existsSync(md)) {
-            const st = getFolderRecursiveStats(md, 2);
+            const st = await getFolderRecursiveStatsAsync(md, 2);
             crashBytes += st.size;
             crashCount += st.count;
             crashPaths.push(md);
           }
         }
+        await new Promise((r) => setImmediate(r));
       }
 
       const totalSize = cacheBytes + historyBytes + cookiesBytes + crashBytes;

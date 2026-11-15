@@ -14,7 +14,8 @@ const tests = [
   { name: 'Production Updater Security & Settings Tests', file: 'test/updateSecurity.test.cjs' },
   { name: 'License & Gumroad Manager Tests', file: 'test/licenseManager.test.cjs' },
   { name: 'Windows Safety Guard & Path Allowlist Tests', file: 'test/safetyGuard.test.cjs' },
-  { name: 'Customer Update System & Rollback Tests', file: 'test/updateManager.test.cjs' }
+  { name: 'Customer Update System & Rollback Tests', file: 'test/updateManager.test.cjs' },
+  { name: 'Event Loop Responsiveness & Non-Blocking Scanners', file: 'test/eventLoopResponsiveness.test.cjs' }
 ];
 
 let totalPassed = 0;

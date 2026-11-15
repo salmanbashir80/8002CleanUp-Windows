@@ -564,11 +564,12 @@ export default function App() {
 
   useEffect(() => {
     refreshTelemetry(activeModule === 'activity_monitor');
+    const intervalMs = activeModule === 'activity_monitor' ? 5000 : 9000;
     const timer = setInterval(() => {
       if (typeof document === 'undefined' || document.visibilityState === 'visible') {
         refreshTelemetry(activeModule === 'activity_monitor');
       }
-    }, 4500);
+    }, intervalMs);
     return () => clearInterval(timer);
   }, [activeModule]);
 
@@ -692,11 +693,14 @@ export default function App() {
 
   // Quick initial audit on launch so cleanable temp size is immediately visible
   useEffect(() => {
-    if (window.electronAPI?.scanJunk) {
-      window.electronAPI.scanJunk().then((res: any) => {
-        if (res) setScanResult(res);
-      }).catch(() => {});
-    }
+    const launchTimer = setTimeout(() => {
+      if (window.electronAPI?.scanJunk) {
+        window.electronAPI.scanJunk().then((res: any) => {
+          if (res) setScanResult(res);
+        }).catch(() => {});
+      }
+    }, 1200);
+    return () => clearTimeout(launchTimer);
   }, []);
 
   const handleRunScan = async () => {
